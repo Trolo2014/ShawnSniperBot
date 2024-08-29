@@ -138,12 +138,12 @@ class SnipeCog(commands.Cog):
             # Player found case
             embed.add_field(
                 name=f"Player {username} found in PlaceID:{place_id}",
-                value=f"**Roblox.GameLauncher.joinGameInstance({place_id}, \"{job_id}\")**",
+                value=f"**roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}**",
                 inline=False
             )
             embed.add_field(
                 name="Instructions:",
-                value="Copy it > open roblox browser > inspect element > console > write allow pasting then ctrl v enter and it will join game",
+                value="Copy it, Enter https://www.roblox.com/home and Paste It Into Url",
                 inline=False
             )
         else:
