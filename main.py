@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import requests
 import os
+import asyncio
 
 from keep_alive import keep_alive
 keep_alive()
@@ -78,7 +79,7 @@ def fetch_thumbnails(tokens):
         return None
 
 # Function to search for player
-def search_player(place_id, username):
+async def search_player(interaction, place_id, username):
     user_id = get_user_id(username)
     if not user_id:
         return "User not found", None
@@ -90,6 +91,7 @@ def search_player(place_id, username):
     cursor = None
     all_player_tokens = []
     server_data = []
+    total_servers = 0
 
     while True:
         servers = get_servers(place_id, cursor)
@@ -97,6 +99,7 @@ def search_player(place_id, username):
             return "Failed to get servers", None
 
         cursor = servers.get("nextPageCursor")
+        total_servers += len(servers.get("data", []))
 
         for server in servers.get("data", []):
             tokens = server.get("playerTokens", [])
@@ -106,7 +109,13 @@ def search_player(place_id, username):
         if not cursor:
             break
 
+        # Send progress update
+        await interaction.followup.send(f"Scanning servers... {total_servers} servers found so far.", ephemeral=True)
+
     chunk_size = 100
+    total_chunks = (len(all_player_tokens) + chunk_size - 1) // chunk_size
+    scanned_chunks = 0
+
     for i in range(0, len(all_player_tokens), chunk_size):
         chunk = all_player_tokens[i:i + chunk_size]
         thumbnails = fetch_thumbnails(chunk)
@@ -119,6 +128,11 @@ def search_player(place_id, username):
                     if token == thumb["requestId"].split(":")[1]:
                         return "Player found", server.get("id")
 
+        scanned_chunks += 1
+        progress = (scanned_chunks / total_chunks) * 100
+        await interaction.followup.send(f"Scanning progress: {progress:.2f}% done.", ephemeral=True)
+        await asyncio.sleep(1)  # Add delay to prevent hitting rate limits
+
     return "Player not found", None
 
 # Cog containing the slash command
@@ -130,27 +144,29 @@ class SnipeCog(commands.Cog):
     @discord.app_commands.describe(username="The Roblox username", place_id="The game place ID")
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
     async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: str):
-        status, job_id = search_player(place_id, username)
+        await interaction.response.defer(ephemeral=True)  # Defer the response to avoid timeout
+
+        status, job_id = await search_player(interaction, place_id, username)
 
         embed = discord.Embed(color=0x1E90FF)  # Shiny blue color
 
         if job_id:
             # Player found case
             embed.add_field(
-                name=f"Player {username} found in PlaceID:{place_id}",
-                value=f"**roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}**",
+                name=f"Player:{username} Found In PlaceID:{place_id}",
+                value=f"DeepLink:**roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}**",
                 inline=False
             )
             embed.add_field(
                 name="Instructions:",
-                value="Copy it, Enter https://www.roblox.com/home and Paste It Into Url",
+                value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL",
                 inline=False
             )
         else:
             # Player not found case
-            embed.add_field(name=f"Player {username} was not found in PlaceID:{place_id}", value="N/A", inline=False)
+            embed.add_field(name=f"Player:{username} was not found in PlaceID:{place_id}", value="N/A", inline=False)
 
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
 # Register the cog and the command tree
 async def setup(bot):
