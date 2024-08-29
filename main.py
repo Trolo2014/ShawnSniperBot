@@ -44,18 +44,18 @@ def get_avatar_thumbnail(user_id):
         return None
 
 # Function to get game servers with retry logic
-def get_servers(place_id, cursor=None, retries=5):
+async def get_servers(place_id, cursor=None, retries=10):
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
-    for _ in range(retries):
+    for attempt in range(retries):
         try:
             response = requests.get(url)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
-            print(f"Error getting servers: {e}")
-            asyncio.sleep(2)  # Wait before retrying
+            print(f"Attempt {attempt + 1} failed: {e}")
+            await asyncio.sleep(2)  # Wait before retrying
     return None
 
 # Function to batch fetch thumbnails
@@ -98,11 +98,15 @@ async def search_player(interaction, place_id, username, embed):
     all_player_tokens = []
     server_data = []
     total_servers = 0
+    retries = 10  # Number of retries for fetching servers
 
     while True:
-        servers = get_servers(place_id, cursor)
+        embed.set_field_at(0, name="Looping Status", value="Fetching server data...", inline=False)
+        await interaction.edit_original_response(embed=embed)
+        
+        servers = await get_servers(place_id, cursor, retries)
         if not servers:
-            embed.add_field(name="Error", value="Failed to get servers")
+            embed.add_field(name="Error", value="Failed to get servers after retries")
             await interaction.edit_original_response(embed=embed)
             return None
 
@@ -121,8 +125,9 @@ async def search_player(interaction, place_id, username, embed):
     total_chunks = (len(all_player_tokens) + chunk_size - 1) // chunk_size
     scanned_chunks = 0
 
-    for i in range(0, len(all_player_tokens), chunk_size):
-        chunk = all_player_tokens[i:i + chunk_size]
+    while all_player_tokens:
+        chunk = all_player_tokens[:chunk_size]
+        all_player_tokens = all_player_tokens[chunk_size:]
         thumbnails = fetch_thumbnails(chunk)
         if not thumbnails:
             embed.add_field(name="Error", value="Failed to fetch thumbnails")
@@ -138,8 +143,9 @@ async def search_player(interaction, place_id, username, embed):
         scanned_chunks += 1
         progress = (scanned_chunks / total_chunks) * 100
         embed.set_field_at(0, name="Scanning Progress", value=f"{progress:.2f}% done", inline=False)
+        embed.set_field_at(1, name="Looping Status", value="Scanning remaining tokens...", inline=False)
         await interaction.edit_original_response(embed=embed)
-        await asyncio.sleep(1)  # Optional: Keep a small delay between batches
+        await asyncio.sleep(0.50)  # Optional delay to manage load
 
     return None
 
@@ -157,7 +163,8 @@ class SnipeCog(commands.Cog):
         # Initial embed with progress bar
         embed = discord.Embed(color=0x1E90FF)  # Shiny blue color
         embed.add_field(name="Scanning Progress", value="0% done", inline=False)
-        message = await interaction.followup.send(embed=embed, ephemeral=True)
+        embed.add_field(name="Looping Status", value="Initializing...", inline=False)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
         job_id = await search_player(interaction, place_id, username, embed)
 
@@ -179,7 +186,7 @@ class SnipeCog(commands.Cog):
             embed.clear_fields()
             embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="N/A", inline=False)
 
-        await message.edit(embed=embed)
+        await interaction.edit_original_response(embed=embed)
 
 # Register the cog and the command tree
 async def setup(bot):
