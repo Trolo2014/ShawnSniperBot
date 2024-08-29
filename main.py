@@ -101,7 +101,7 @@ async def search_player(interaction, place_id, username, embed):
     retries = 10  # Number of retries for fetching servers
 
     while True:
-        embed.set_field_at(0, name="Looping Status", value="Fetching Servers data...", inline=False)
+        embed.set_field_at(0, name="Looping Status", value="Fetching Servers...", inline=False)
         await interaction.edit_original_response(embed=embed)
         
         servers = await get_servers(place_id, cursor, retries)
@@ -143,7 +143,7 @@ async def search_player(interaction, place_id, username, embed):
         scanned_chunks += 1
         progress = (scanned_chunks / total_chunks) * 100
         embed.set_field_at(0, name="Scanning Progress", value=f"{progress:.2f}% done", inline=False)
-        embed.set_field_at(1, name="Looping Status", value="Scanning remaining tokens...", inline=False)
+        embed.set_field_at(1, name="Looping Status", value="Scanning Servers For Player...", inline=False)
         await interaction.edit_original_response(embed=embed)
         await asyncio.sleep(0.25)  # Optional delay to manage load
 
