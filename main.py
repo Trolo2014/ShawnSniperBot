@@ -143,7 +143,7 @@ async def search_player(interaction, place_id, username, embed):
         scanned_chunks += 1
         progress = (scanned_chunks / total_chunks) * 100
         embed.set_field_at(0,name="Status", value="Scanning Servers For Player...", inline=False)
-        embed.set_field_at(1,name="Scanning Progress", value=f"{progress:.2f}% done", inline=False)
+        embed.set_field_at(1,name="Scanning Progress", value=f"{progress:.2f}% Scanned", inline=False)
         await interaction.edit_original_response(embed=embed)
         await asyncio.sleep(0.25)  # Optional delay to manage load
 
@@ -173,7 +173,7 @@ class SnipeCog(commands.Cog):
             embed.clear_fields()
             embed.add_field(
                 name=f"Player: {username} Found In PlaceID: {place_id}",
-                value=f"DeepLink:||roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}||",
+                value=f"DeepLink: ||roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}||",
                 inline=False
             )
             embed.add_field(
