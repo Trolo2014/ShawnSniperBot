@@ -43,18 +43,20 @@ def get_avatar_thumbnail(user_id):
         print(f"Error getting avatar thumbnail: {e}")
         return None
 
-# Function to get game servers
-def get_servers(place_id, cursor=None):
+# Function to get game servers with retry logic
+def get_servers(place_id, cursor=None, retries=5):
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        print(f"Error getting servers: {e}")
-        return None
+    for _ in range(retries):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            print(f"Error getting servers: {e}")
+            asyncio.sleep(2)  # Wait before retrying
+    return None
 
 # Function to batch fetch thumbnails
 def fetch_thumbnails(tokens):
@@ -137,7 +139,7 @@ async def search_player(interaction, place_id, username, embed):
         progress = (scanned_chunks / total_chunks) * 100
         embed.set_field_at(0, name="Scanning Progress", value=f"{progress:.2f}% done", inline=False)
         await interaction.edit_original_response(embed=embed)
-        await asyncio.sleep(2)  # Add delay to prevent hitting rate limits
+        await asyncio.sleep(1)  # Optional: Keep a small delay between batches
 
     return None
 
@@ -155,7 +157,7 @@ class SnipeCog(commands.Cog):
         # Initial embed with progress bar
         embed = discord.Embed(color=0x1E90FF)  # Shiny blue color
         embed.add_field(name="Scanning Progress", value="0% done", inline=False)
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        message = await interaction.followup.send(embed=embed, ephemeral=True)
 
         job_id = await search_player(interaction, place_id, username, embed)
 
@@ -177,7 +179,7 @@ class SnipeCog(commands.Cog):
             embed.clear_fields()
             embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="N/A", inline=False)
 
-        await interaction.edit_original_response(embed=embed)
+        await message.edit(embed=embed)
 
 # Register the cog and the command tree
 async def setup(bot):
