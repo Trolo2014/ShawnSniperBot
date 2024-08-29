@@ -173,7 +173,12 @@ class SnipeCog(commands.Cog):
             embed.clear_fields()
             embed.add_field(
                 name=f"Player: {username} Found In PlaceID: {place_id}",
-                value=f"DeepLink:                                                                                                                                                             ||roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}||",
+                value=f"Sniped Bitch",
+                inline=False
+            )
+            embed.add_field(
+                name=f"DeepLink",
+                value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}",
                 inline=False
             )
             embed.add_field(
