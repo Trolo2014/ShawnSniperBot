@@ -137,7 +137,7 @@ async def search_player(interaction, place_id, username, embed):
         progress = (scanned_chunks / total_chunks) * 100
         embed.set_field_at(0, name="Scanning Progress", value=f"{progress:.2f}% done", inline=False)
         await interaction.edit_original_response(embed=embed)
-        await asyncio.sleep(1)  # Add delay to prevent hitting rate limits
+        await asyncio.sleep(1.50)  # Add delay to prevent hitting rate limits
 
     return None
 
