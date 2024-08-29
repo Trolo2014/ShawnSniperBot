@@ -155,7 +155,7 @@ class SnipeCog(commands.Cog):
         self.bot = bot
 
     @discord.app_commands.command(name="snipe", description="Search for a player in a specific game")
-    @discord.app_commands.describe(username="The Roblox username", place_id="The game place ID")
+    @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
     async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: str):
         await interaction.response.defer()  # Defer the response to avoid timeout
@@ -172,8 +172,8 @@ class SnipeCog(commands.Cog):
             # Player found case
             embed.clear_fields()
             embed.add_field(
-                name=f"Player: {username} Found In PlaceID: {place_id}",
-                value=f"Sniped Bitch",
+                name=f"Player: {username} Found!",
+                value=f"In PlaceID: {place_id}",
                 inline=False
             )
             embed.add_field(
@@ -189,7 +189,7 @@ class SnipeCog(commands.Cog):
         else:
             # Player not found case
             embed.clear_fields()
-            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="N/A", inline=False)
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
 
         await interaction.edit_original_response(embed=embed)
 
