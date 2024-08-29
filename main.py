@@ -173,7 +173,7 @@ class SnipeCog(commands.Cog):
             embed.clear_fields()
             embed.add_field(
                 name=f"Player: {username} Found!",
-                value=f"In PlaceID: {place_id}",
+                value=f"PlaceID: {place_id}",
                 inline=False
             )
             embed.add_field(
