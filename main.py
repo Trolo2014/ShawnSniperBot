@@ -79,14 +79,18 @@ def fetch_thumbnails(tokens):
         return None
 
 # Function to search for player
-async def search_player(interaction, place_id, username):
+async def search_player(interaction, place_id, username, embed):
     user_id = get_user_id(username)
     if not user_id:
-        return "User not found", None
+        embed.add_field(name="Error", value="User not found")
+        await interaction.edit_original_response(embed=embed)
+        return None
 
     target_thumbnail_url = get_avatar_thumbnail(user_id)
     if not target_thumbnail_url:
-        return "Failed to get avatar thumbnail", None
+        embed.add_field(name="Error", value="Failed to get avatar thumbnail")
+        await interaction.edit_original_response(embed=embed)
+        return None
 
     cursor = None
     all_player_tokens = []
@@ -96,7 +100,9 @@ async def search_player(interaction, place_id, username):
     while True:
         servers = get_servers(place_id, cursor)
         if not servers:
-            return "Failed to get servers", None
+            embed.add_field(name="Error", value="Failed to get servers")
+            await interaction.edit_original_response(embed=embed)
+            return None
 
         cursor = servers.get("nextPageCursor")
         total_servers += len(servers.get("data", []))
@@ -109,9 +115,6 @@ async def search_player(interaction, place_id, username):
         if not cursor:
             break
 
-        # Send progress update
-        await interaction.followup.send(f"Scanning servers... {total_servers} servers found so far.", ephemeral=True)
-
     chunk_size = 100
     total_chunks = (len(all_player_tokens) + chunk_size - 1) // chunk_size
     scanned_chunks = 0
@@ -120,20 +123,23 @@ async def search_player(interaction, place_id, username):
         chunk = all_player_tokens[i:i + chunk_size]
         thumbnails = fetch_thumbnails(chunk)
         if not thumbnails:
-            return "Failed to fetch thumbnails", None
+            embed.add_field(name="Error", value="Failed to fetch thumbnails")
+            await interaction.edit_original_response(embed=embed)
+            return None
 
         for thumb in thumbnails.get("data", []):
             if thumb["imageUrl"] == target_thumbnail_url:
                 for token, server in server_data:
                     if token == thumb["requestId"].split(":")[1]:
-                        return "Player found", server.get("id")
+                        return server.get("id")
 
         scanned_chunks += 1
         progress = (scanned_chunks / total_chunks) * 100
-        await interaction.followup.send(f"Scanning progress: {progress:.2f}% done.", ephemeral=True)
+        embed.set_field_at(0, name="Scanning Progress", value=f"{progress:.2f}% done", inline=False)
+        await interaction.edit_original_response(embed=embed)
         await asyncio.sleep(1)  # Add delay to prevent hitting rate limits
 
-    return "Player not found", None
+    return None
 
 # Cog containing the slash command
 class SnipeCog(commands.Cog):
@@ -144,17 +150,21 @@ class SnipeCog(commands.Cog):
     @discord.app_commands.describe(username="The Roblox username", place_id="The game place ID")
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
     async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: str):
-        await interaction.response.defer(ephemeral=True)  # Defer the response to avoid timeout
+        await interaction.response.defer()  # Defer the response to avoid timeout
 
-        status, job_id = await search_player(interaction, place_id, username)
-
+        # Initial embed with progress bar
         embed = discord.Embed(color=0x1E90FF)  # Shiny blue color
+        embed.add_field(name="Scanning Progress", value="0% done", inline=False)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+        job_id = await search_player(interaction, place_id, username, embed)
 
         if job_id:
             # Player found case
+            embed.clear_fields()
             embed.add_field(
-                name=f"Player:{username} Found In PlaceID:{place_id}",
-                value=f"DeepLink:**roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}**",
+                name=f"Player: {username} Found In PlaceID: {place_id}",
+                value=f"DeepLink: **roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}**",
                 inline=False
             )
             embed.add_field(
@@ -164,9 +174,10 @@ class SnipeCog(commands.Cog):
             )
         else:
             # Player not found case
-            embed.add_field(name=f"Player:{username} was not found in PlaceID:{place_id}", value="N/A", inline=False)
+            embed.clear_fields()
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="N/A", inline=False)
 
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.edit_original_response(embed=embed)
 
 # Register the cog and the command tree
 async def setup(bot):
