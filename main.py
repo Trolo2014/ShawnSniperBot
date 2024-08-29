@@ -55,7 +55,7 @@ async def get_servers(place_id, cursor=None, retries=10):
             return response.json()
         except requests.RequestException as e:
             print(f"Attempt {attempt + 1} failed: {e}")
-            await asyncio.sleep(2)  # Wait before retrying
+            await asyncio.sleep(2.5)  # Wait before retrying
     return None
 
 # Function to batch fetch thumbnails
