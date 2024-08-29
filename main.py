@@ -101,7 +101,7 @@ async def search_player(interaction, place_id, username, embed):
     retries = 10  # Number of retries for fetching servers
 
     while True:
-        embed.set_field_at(0, name="Looping Status", value="Fetching server data...", inline=False)
+        embed.set_field_at(0, name="Looping Status", value="Fetching Servers data...", inline=False)
         await interaction.edit_original_response(embed=embed)
         
         servers = await get_servers(place_id, cursor, retries)
@@ -145,7 +145,7 @@ async def search_player(interaction, place_id, username, embed):
         embed.set_field_at(0, name="Scanning Progress", value=f"{progress:.2f}% done", inline=False)
         embed.set_field_at(1, name="Looping Status", value="Scanning remaining tokens...", inline=False)
         await interaction.edit_original_response(embed=embed)
-        await asyncio.sleep(0.50)  # Optional delay to manage load
+        await asyncio.sleep(0.25)  # Optional delay to manage load
 
     return None
 
