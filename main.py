@@ -102,10 +102,11 @@ async def search_player(interaction, place_id, username, embed):
     server_data = []
     total_servers = 0
 
+    # Initial embed setup with "Collecting Tokens" message
+    embed.set_field_at(1, name="Status", value="Collecting Tokens...", inline=False)
+    await interaction.edit_original_response(embed=embed)
+
     while True:
-        embed.set_field_at(1, name="Status", value="Scanning Servers For Player...", inline=False)
-        await interaction.edit_original_response(embed=embed)
-        
         servers = await get_servers(place_id, cursor)
         if not servers:
             embed.add_field(name="Error", value="Failed to get servers after retries")
@@ -115,7 +116,7 @@ async def search_player(interaction, place_id, username, embed):
         cursor = servers.get("nextPageCursor")
         total_servers += len(servers.get("data", []))
         
-        # Update the "Collecting Tokens" field with total servers processed
+        # Update the "Total Servers" field as servers are fetched
         embed.set_field_at(0, name="Fetching Servers", value=f"Total Servers: {total_servers}", inline=False)
         await interaction.edit_original_response(embed=embed)
 
@@ -126,6 +127,11 @@ async def search_player(interaction, place_id, username, embed):
 
         if not cursor:
             break
+
+    # Update embed to "Fetching Servers" after all servers have been collected
+    embed.set_field_at(1, name="Status", value="Fetching Servers", inline=False)
+    embed.set_field_at(2, name="Scanning Progress", value="0%", inline=False)
+    await interaction.edit_original_response(embed=embed)
 
     chunk_size = 100
     total_chunks = (len(all_player_tokens) + chunk_size - 1) // chunk_size
@@ -148,7 +154,6 @@ async def search_player(interaction, place_id, username, embed):
 
         scanned_chunks += 1
         progress = (scanned_chunks / total_chunks) * 100
-        embed.set_field_at(1, name="Status", value="Scanning Servers For Player...", inline=False)
         embed.set_field_at(2, name="Scanning Progress", value=f"{progress:.2f}%", inline=False)
         await interaction.edit_original_response(embed=embed)
 
@@ -168,8 +173,7 @@ class SnipeCog(commands.Cog):
         # Initial embed with progress bar
         embed = discord.Embed(color=0x1E90FF)  # Shiny blue color
         embed.add_field(name="Fetching Servers", value="Total Servers: 0", inline=False)
-        embed.add_field(name="Status", value="Scanning Servers For Player...", inline=False)
-        embed.add_field(name="Scanning Progress", value="0%", inline=False)
+        embed.add_field(name="Status", value="Collecting Tokens...", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         job_id = await search_player(interaction, place_id, username, embed)
@@ -248,7 +252,7 @@ class SnipeCog(commands.Cog):
                 cursor = servers.get("nextPageCursor")
                 total_servers += len(servers.get("data", []))
                 
-                # Update the "Collecting Tokens" field with total servers processed
+                # Update the "Total Servers" field as servers are fetched
                 embed.set_field_at(0, name="Fetching Servers", value=f"Total Servers: {total_servers}", inline=False)
                 await interaction.edit_original_response(embed=embed)
 
@@ -259,6 +263,11 @@ class SnipeCog(commands.Cog):
 
                 if not cursor:
                     break
+
+            # Update embed to "Fetching Servers" after all servers have been collected
+            embed.set_field_at(1, name="Status", value="Fetching Servers", inline=False)
+            embed.set_field_at(2, name="Scanning Progress", value="0%", inline=False)
+            await interaction.edit_original_response(embed=embed)
 
             chunk_size = 100
             total_chunks = (len(all_player_tokens) + chunk_size - 1) // chunk_size
@@ -331,4 +340,4 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
 
 # Run the bot using the token stored in environment variables
-bot.run(os.environ.get('DISCORD_BOT_TOKENO'))
+bot.run(os.environ.get('DISCORD_BOT_TOKEN'))
