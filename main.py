@@ -167,7 +167,7 @@ class SnipeCog(commands.Cog):
 
         # Initial embed with progress bar
         embed = discord.Embed(color=0x1E90FF)  # Shiny blue color
-        embed.add_field(name="Collecting Tokens", value="Total Servers: 0", inline=False)
+        embed.add_field(name="", value="", inline=False)
         embed.add_field(name="Status", value="Initializing...", inline=False)
         embed.add_field(name="Looping Status", value="Fetching Servers...", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
