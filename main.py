@@ -29,19 +29,22 @@ def get_user_id(username):
         print(f"Error getting user ID: {e}")
         return None
 
-# Function to get avatar thumbnail URL
-def get_avatar_thumbnail(user_id):
+# Function to get avatar thumbnail URL with retry logic
+async def get_avatar_thumbnail(user_id, retries=5, delay=3):
     url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        if 'data' in data and len(data['data']) > 0:
-            return data['data'][0]['imageUrl']
-        return None
-    except requests.RequestException as e:
-        print(f"Error getting avatar thumbnail: {e}")
-        return None
+    for attempt in range(retries):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+            if 'data' in data and len(data['data']) > 0:
+                return data['data'][0]['imageUrl']
+            return None
+        except requests.RequestException as e:
+            print(f"Attempt {attempt + 1} failed: {e}")
+            if attempt < retries - 1:  # Don't delay after the last attempt
+                await asyncio.sleep(delay)
+    return None
 
 # Function to get game servers with retry logic
 async def get_servers(place_id, cursor=None, retries=10):
@@ -88,7 +91,7 @@ async def search_player(interaction, place_id, username, embed):
         await interaction.edit_original_response(embed=embed)
         return None
 
-    target_thumbnail_url = get_avatar_thumbnail(user_id)
+    target_thumbnail_url = await get_avatar_thumbnail(user_id)
     if not target_thumbnail_url:
         embed.add_field(name="Error", value="Failed to get avatar thumbnail")
         await interaction.edit_original_response(embed=embed)
@@ -98,13 +101,12 @@ async def search_player(interaction, place_id, username, embed):
     all_player_tokens = []
     server_data = []
     total_servers = 0
-    retries = 10  # Number of retries for fetching servers
 
     while True:
         embed.set_field_at(0, name="Looping Status", value="Fetching Servers...", inline=False)
         await interaction.edit_original_response(embed=embed)
         
-        servers = await get_servers(place_id, cursor, retries)
+        servers = await get_servers(place_id, cursor)
         if not servers:
             embed.add_field(name="Error", value="Failed to get servers after retries")
             await interaction.edit_original_response(embed=embed)
@@ -112,6 +114,10 @@ async def search_player(interaction, place_id, username, embed):
 
         cursor = servers.get("nextPageCursor")
         total_servers += len(servers.get("data", []))
+        
+        # Update the embed with the number of servers being processed
+        embed.set_field_at(0, name="Collecting Tokens", value=f"Total Servers: {total_servers}", inline=False)
+        await interaction.edit_original_response(embed=embed)
 
         for server in servers.get("data", []):
             tokens = server.get("playerTokens", [])
@@ -199,7 +205,7 @@ class SnipeCog(commands.Cog):
         await interaction.response.defer()  # Defer the response to avoid timeout
 
         # Initial embed with progress bar
-        embed = discord.Embed(color=0xFFD700)  # Gold  color
+        embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Status", value="Starting Searches In Servers For Player For 5 Minutes...", inline=False)
         embed.add_field(name="Scanning Progress", value="0% done", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
@@ -210,7 +216,7 @@ class SnipeCog(commands.Cog):
             await interaction.edit_original_response(embed=embed)
             return
 
-        target_thumbnail_url = get_avatar_thumbnail(user_id)
+        target_thumbnail_url = await get_avatar_thumbnail(user_id)
         if not target_thumbnail_url:
             embed.add_field(name="Error", value="Failed to get avatar thumbnail")
             await interaction.edit_original_response(embed=embed)
@@ -239,6 +245,10 @@ class SnipeCog(commands.Cog):
 
                 cursor = servers.get("nextPageCursor")
                 total_servers += len(servers.get("data", []))
+                
+                # Update the embed with the number of servers being processed
+                embed.set_field_at(0, name="Collecting Tokens", value=f"Total Servers: {total_servers}", inline=False)
+                await interaction.edit_original_response(embed=embed)
 
                 for server in servers.get("data", []):
                     tokens = server.get("playerTokens", [])
