@@ -315,7 +315,7 @@ class SnipeCog(commands.Cog):
 
         if not found:
             embed.clear_fields()
-            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} within 15 minutes", value="", inline=False)
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} within 5 minutes", value="", inline=False)
             await interaction.edit_original_response(embed=embed)
 
 
