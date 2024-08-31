@@ -103,7 +103,7 @@ async def search_player(interaction, place_id, username, embed):
     total_servers = 0
 
     while True:
-        embed.set_field_at(2, name="Status", value="Fetching Servers...", inline=False)
+        embed.set_field_at(1, name="Looping Status", value="Scanning Servers For Player...", inline=False)
         await interaction.edit_original_response(embed=embed)
         
         servers = await get_servers(place_id, cursor)
@@ -115,8 +115,8 @@ async def search_player(interaction, place_id, username, embed):
         cursor = servers.get("nextPageCursor")
         total_servers += len(servers.get("data", []))
         
-        # Update the embed with the number of servers being processed
-        embed.set_field_at(1, name="Collecting Tokens", value=f"Total Servers: {total_servers}", inline=False)
+        # Update the "Collecting Tokens" field with total servers processed
+        embed.set_field_at(0, name="Collecting Tokens", value=f"Total Servers: {total_servers}", inline=False)
         await interaction.edit_original_response(embed=embed)
 
         for server in servers.get("data", []):
@@ -148,7 +148,7 @@ async def search_player(interaction, place_id, username, embed):
 
         scanned_chunks += 1
         progress = (scanned_chunks / total_chunks) * 100
-        embed.set_field_at(0, name="Looping Status", value="Scanning Servers For Player...", inline=False)
+        embed.set_field_at(1, name="Looping Status", value="Scanning Servers For Player...", inline=False)
         embed.set_field_at(2, name="Scanning Progress", value=f"{progress:.2f}%", inline=False)
         await interaction.edit_original_response(embed=embed)
 
@@ -167,9 +167,9 @@ class SnipeCog(commands.Cog):
 
         # Initial embed with progress bar
         embed = discord.Embed(color=0x1E90FF)  # Shiny blue color
-        embed.add_field(name="", value="", inline=False)
-        embed.add_field(name="Status", value="Initializing...", inline=False)
-        embed.add_field(name="Looping Status", value="Fetching Servers...", inline=False)
+        embed.add_field(name="Collecting Tokens", value="Total Servers: 0", inline=False)
+        embed.add_field(name="Status", value="Scanning Servers For Player...", inline=False)
+        embed.add_field(name="Scanning Progress", value="0%", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         job_id = await search_player(interaction, place_id, username, embed)
@@ -207,9 +207,9 @@ class SnipeCog(commands.Cog):
 
         # Initial embed with progress bar
         embed = discord.Embed(color=0xFFD700)  # Gold color
+        embed.add_field(name="Collecting Tokens", value="Total Servers: 0", inline=False)
         embed.add_field(name="Status", value="Starting Searches In Servers For Player For 5 Minutes...", inline=False)
-        embed.add_field(name="Scanning Progress", value="0% done", inline=False)
-        embed.add_field(name="Status", value="Fetching Servers...", inline=False)
+        embed.add_field(name="Scanning Progress", value="0%", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         user_id = get_user_id(username)
@@ -230,7 +230,7 @@ class SnipeCog(commands.Cog):
         scan_interval = 30  # 30 seconds
 
         while asyncio.get_event_loop().time() - start_time < duration:
-            embed.set_field_at(2, name="Status", value="Scanning Servers For Player...", inline=False)
+            embed.set_field_at(1, name="Status", value="Scanning Servers For Player...", inline=False)
             await interaction.edit_original_response(embed=embed)
 
             cursor = None
@@ -248,8 +248,8 @@ class SnipeCog(commands.Cog):
                 cursor = servers.get("nextPageCursor")
                 total_servers += len(servers.get("data", []))
                 
-                # Update the embed with the number of servers being processed
-                embed.set_field_at(1, name="Collecting Tokens", value=f"Total Servers: {total_servers} Collected", inline=False)
+                # Update the "Collecting Tokens" field with total servers processed
+                embed.set_field_at(0, name="Collecting Tokens", value=f"Total Servers: {total_servers}", inline=False)
                 await interaction.edit_original_response(embed=embed)
 
                 for server in servers.get("data", []):
@@ -285,7 +285,7 @@ class SnipeCog(commands.Cog):
 
                 scanned_chunks += 1
                 progress = (scanned_chunks / total_chunks) * 100
-                embed.set_field_at(1, name="Scanning Progress", value=f"{progress:.2f}%", inline=False)
+                embed.set_field_at(2, name="Scanning Progress", value=f"{progress:.2f}%", inline=False)
                 await interaction.edit_original_response(embed=embed)
 
                 if found:
@@ -315,7 +315,7 @@ class SnipeCog(commands.Cog):
 
         if not found:
             embed.clear_fields()
-            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} within 5 minutes", value="", inline=False)
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} within 15 minutes", value="", inline=False)
             await interaction.edit_original_response(embed=embed)
 
 
