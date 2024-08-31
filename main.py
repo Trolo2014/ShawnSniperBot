@@ -102,10 +102,7 @@ async def search_player(interaction, place_id, username, embed):
     server_data = []
     total_servers = 0
 
-    # Initial embed setup with "Collecting Tokens" message
-    embed.set_field_at(1, name="Status", value="Collecting Tokens...", inline=False)
-    await interaction.edit_original_response(embed=embed)
-
+    # Stage 1: Fetching Servers
     while True:
         servers = await get_servers(place_id, cursor)
         if not servers:
@@ -115,9 +112,10 @@ async def search_player(interaction, place_id, username, embed):
 
         cursor = servers.get("nextPageCursor")
         total_servers += len(servers.get("data", []))
-        
-        # Update the "Total Servers" field as servers are fetched
-        embed.set_field_at(0, name="Fetching Servers", value=f"Total Servers: {total_servers}", inline=False)
+
+        # Update embed with the progressively updated total servers
+        embed.clear_fields()
+        embed.add_field(name="Fetching Servers", value=f"Total Servers: {total_servers}", inline=False)
         await interaction.edit_original_response(embed=embed)
 
         for server in servers.get("data", []):
@@ -128,9 +126,11 @@ async def search_player(interaction, place_id, username, embed):
         if not cursor:
             break
 
-    # Update embed to "Fetching Servers" after all servers have been collected
-    embed.set_field_at(1, name="Status", value="Fetching Servers", inline=False)
-    embed.set_field_at(2, name="Scanning Progress", value="0%", inline=False)
+    # Stage 2: After all servers are loaded
+    embed.clear_fields()
+    embed.add_field(name="Fetching Servers", value=f"Total Servers: {total_servers}", inline=False)
+    embed.add_field(name="Status", value="Scanning Servers For Player...", inline=False)
+    embed.add_field(name="Scanning Progress", value="0%", inline=False)
     await interaction.edit_original_response(embed=embed)
 
     chunk_size = 100
@@ -154,6 +154,8 @@ async def search_player(interaction, place_id, username, embed):
 
         scanned_chunks += 1
         progress = (scanned_chunks / total_chunks) * 100
+
+        # Update the embed with scanning progress
         embed.set_field_at(2, name="Scanning Progress", value=f"{progress:.2f}%", inline=False)
         await interaction.edit_original_response(embed=embed)
 
@@ -173,7 +175,6 @@ class SnipeCog(commands.Cog):
         # Initial embed with progress bar
         embed = discord.Embed(color=0x1E90FF)  # Shiny blue color
         embed.add_field(name="Fetching Servers", value="Total Servers: 0", inline=False)
-        embed.add_field(name="Status", value="Collecting Tokens...", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         job_id = await search_player(interaction, place_id, username, embed)
@@ -202,131 +203,6 @@ class SnipeCog(commands.Cog):
             embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
 
         await interaction.edit_original_response(embed=embed)
-
-    @discord.app_commands.command(name="snipet", description="Loop Searches In Servers For Player For 5 Minutes")
-    @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
-    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-    async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
-        await interaction.response.defer()  # Defer the response to avoid timeout
-
-        # Initial embed with progress bar
-        embed = discord.Embed(color=0xFFD700)  # Gold color
-        embed.add_field(name="Fetching Servers", value="Total Servers: 0", inline=False)
-        embed.add_field(name="Status", value="Starting Searches In Servers For Player For 5 Minutes...", inline=False)
-        embed.add_field(name="Scanning Progress", value="0%", inline=False)
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
-        user_id = get_user_id(username)
-        if not user_id:
-            embed.add_field(name="Error", value="User not found")
-            await interaction.edit_original_response(embed=embed)
-            return
-
-        target_thumbnail_url = await get_avatar_thumbnail(user_id)
-        if not target_thumbnail_url:
-            embed.add_field(name="Error", value="Failed to get avatar thumbnail")
-            await interaction.edit_original_response(embed=embed)
-            return
-
-        found = False
-        start_time = asyncio.get_event_loop().time()
-        duration = 900  # 15 minutes in seconds
-        scan_interval = 30  # 30 seconds
-
-        while asyncio.get_event_loop().time() - start_time < duration:
-            embed.set_field_at(1, name="Status", value="Scanning Servers For Player...", inline=False)
-            await interaction.edit_original_response(embed=embed)
-
-            cursor = None
-            all_player_tokens = []
-            server_data = []
-            total_servers = 0
-
-            while True:
-                servers = await get_servers(place_id, cursor)
-                if not servers:
-                    embed.add_field(name="Error", value="Failed to get servers")
-                    await interaction.edit_original_response(embed=embed)
-                    return
-
-                cursor = servers.get("nextPageCursor")
-                total_servers += len(servers.get("data", []))
-                
-                # Update the "Total Servers" field as servers are fetched
-                embed.set_field_at(0, name="Fetching Servers", value=f"Total Servers: {total_servers}", inline=False)
-                await interaction.edit_original_response(embed=embed)
-
-                for server in servers.get("data", []):
-                    tokens = server.get("playerTokens", [])
-                    all_player_tokens.extend(tokens)
-                    server_data.extend([(token, server) for token in tokens])
-
-                if not cursor:
-                    break
-
-            # Update embed to "Fetching Servers" after all servers have been collected
-            embed.set_field_at(1, name="Status", value="Fetching Servers", inline=False)
-            embed.set_field_at(2, name="Scanning Progress", value="0%", inline=False)
-            await interaction.edit_original_response(embed=embed)
-
-            chunk_size = 100
-            total_chunks = (len(all_player_tokens) + chunk_size - 1) // chunk_size
-            scanned_chunks = 0
-
-            while all_player_tokens:
-                chunk = all_player_tokens[:chunk_size]
-                all_player_tokens = all_player_tokens[chunk_size:]
-                thumbnails = fetch_thumbnails(chunk)
-                if not thumbnails:
-                    embed.add_field(name="Error", value="Failed to fetch thumbnails")
-                    await interaction.edit_original_response(embed=embed)
-                    return
-
-                for thumb in thumbnails.get("data", []):
-                    if thumb["imageUrl"] == target_thumbnail_url:
-                        for token, server in server_data:
-                            if token == thumb["requestId"].split(":")[1]:
-                                found = True
-                                job_id = server.get("id")
-                                break
-                        if found:
-                            break
-
-                scanned_chunks += 1
-                progress = (scanned_chunks / total_chunks) * 100
-                embed.set_field_at(2, name="Scanning Progress", value=f"{progress:.2f}%", inline=False)
-                await interaction.edit_original_response(embed=embed)
-
-                if found:
-                    break
-
-            if found:
-                embed.clear_fields()
-                embed.add_field(
-                    name=f"Player: {username} Found!",
-                    value=f"PlaceID: {place_id}",
-                    inline=False
-                )
-                embed.add_field(
-                    name=f"DeepLink",
-                    value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}",
-                    inline=False
-                )
-                embed.add_field(
-                    name="Instructions:",
-                    value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL",
-                    inline=False
-                )
-                await interaction.edit_original_response(embed=embed)
-                return
-
-            await asyncio.sleep(scan_interval)
-
-        if not found:
-            embed.clear_fields()
-            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} within 15 minutes", value="", inline=False)
-            await interaction.edit_original_response(embed=embed)
-
 
 # Register the cog and the command tree
 async def setup(bot):
