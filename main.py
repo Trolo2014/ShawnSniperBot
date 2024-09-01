@@ -3,6 +3,7 @@ from discord.ext import commands
 import requests
 import os
 import asyncio
+from datetime import datetime, timedelta
 
 from keep_alive import keep_alive
 keep_alive()
@@ -204,9 +205,80 @@ class SnipeCog(commands.Cog):
 
         await interaction.edit_original_response(embed=embed)
 
+    @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 15 minutes")
+    @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
+    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
+    async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
+        await interaction.response.defer()  # Defer the response to avoid timeout
+
+        # Initial embed with progress bar
+        embed = discord.Embed(color=0xFFD700)  # Gold color
+        embed.add_field(name="Status", value="Starting to search...", inline=False)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+        end_time = datetime.now() + timedelta(minutes=15)
+        found = False
+
+        while datetime.now() < end_time:
+            job_id = await search_player(interaction, place_id, username, embed)
+
+            if job_id:
+                # Player found case
+                embed.clear_fields()
+                embed.add_field(
+                    name=f"Player: {username} Found!",
+                    value=f"PlaceID: {place_id}",
+                    inline=False
+                )
+                embed.add_field(
+                    name=f"DeepLink",
+                    value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}",
+                    inline=False
+                )
+                embed.add_field(
+                    name="Instructions:",
+                    value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL",
+                    inline=False
+                )
+                found = True
+                break  # Exit loop if player is found
+
+            # Update embed to show cooldown status
+            embed.clear_fields()
+            embed.add_field(name="Cooldown", value="Waiting 15 seconds before retrying...", inline=False)
+            await interaction.edit_original_response(embed=embed)
+
+            await asyncio.sleep(15)  # Wait 15 seconds before checking again
+
+        if not found:
+            # Player not found after 15 minutes
+            embed.clear_fields()
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} after 15 minutes", value="", inline=False)
+
+        await interaction.edit_original_response(embed=embed)
+
+# Cog for checking T-shirt ownership
+class CheckTshirtCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @discord.app_commands.command(name="checktshirtpurchase", description="Check if a user owns a specific T-shirt")
+    @discord.app_commands.describe(user_id="The Roblox User ID", tshirt_id="The T-Shirt Asset ID")
+    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
+    async def checktshirt(self, interaction: discord.Interaction, user_id: str, tshirt_id: str):
+        # Fetch the username
+        username = get_username(user_id)
+        ownership_status = check_ownership(user_id, tshirt_id)
+
+        if ownership_status:
+            await interaction.response.send_message(f"{username} bought the T-shirt ID {tshirt_id}!")
+        else:
+            await interaction.response.send_message(f"{username} hasn't bought T-shirt {tshirt_id}")
+
 # Register the cog and the command tree
 async def setup(bot):
     await bot.add_cog(SnipeCog(bot))
+    await bot.add_cog(CheckTshirtCog(bot))
     await bot.tree.sync()
 
 # Bot event handler to run the setup function when the bot is ready
@@ -216,4 +288,4 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
 
 # Run the bot using the token stored in environment variables
-bot.run(os.environ.get('DISCORD_BOT_TOKENO'))
+bot.run(os.environ.get('DISCORD_BOT_TOKEN'))
