@@ -257,28 +257,10 @@ class SnipeCog(commands.Cog):
 
         await interaction.edit_original_response(embed=embed)
 
-# Cog for checking T-shirt ownership
-class CheckTshirtCog(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @discord.app_commands.command(name="checktshirtpurchase", description="Check if a user owns a specific T-shirt")
-    @discord.app_commands.describe(user_id="The Roblox User ID", tshirt_id="The T-Shirt Asset ID")
-    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-    async def checktshirt(self, interaction: discord.Interaction, user_id: str, tshirt_id: str):
-        # Fetch the username
-        username = get_username(user_id)
-        ownership_status = check_ownership(user_id, tshirt_id)
-
-        if ownership_status:
-            await interaction.response.send_message(f"{username} bought the T-shirt ID {tshirt_id}!")
-        else:
-            await interaction.response.send_message(f"{username} hasn't bought T-shirt {tshirt_id}")
 
 # Register the cog and the command tree
 async def setup(bot):
     await bot.add_cog(SnipeCog(bot))
-    await bot.add_cog(CheckTshirtCog(bot))
     await bot.tree.sync()
 
 # Bot event handler to run the setup function when the bot is ready
@@ -288,4 +270,4 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
 
 # Run the bot using the token stored in environment variables
-bot.run(os.environ.get('DISCORD_BOT_TOKEN'))
+bot.run(os.environ.get('DISCORD_BOT_TOKENO'))
