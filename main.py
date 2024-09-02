@@ -185,7 +185,7 @@ class SnipeCog(commands.Cog):
             embed.clear_fields()
             embed.add_field(
                 name=f"Player: {username} Found!",
-                value=f"PlaceID: {place_id}",
+                value=f"",
                 inline=False
             )
             embed.add_field(
@@ -227,7 +227,7 @@ class SnipeCog(commands.Cog):
                 embed.clear_fields()
                 embed.add_field(
                     name=f"Player: {username} Found!",
-                    value=f"PlaceID: {place_id}",
+                    value=f"",
                     inline=False
                 )
                 embed.add_field(
@@ -248,7 +248,7 @@ class SnipeCog(commands.Cog):
             embed.add_field(name="Cooldown", value="Waiting 15 seconds before retrying...", inline=False)
             await interaction.edit_original_response(embed=embed)
 
-            await asyncio.sleep(15)  # Wait 15 seconds before checking again
+            await asyncio.sleep(20)  # Wait 15 seconds before checking again
 
         if not found:
             # Player not found after 15 minutes
