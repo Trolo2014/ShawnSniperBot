@@ -212,7 +212,7 @@ class SnipeCog(commands.Cog):
         await interaction.response.defer()  # Defer the response to avoid timeout
 
         # Initial embed with progress bar
-        embed = discord.Embed(color=0xFFD700)  # Gold color
+        embed = discord.Embed(color=0x1E90FF)  # Gold color
         embed.add_field(name="Status", value="Starting to search...", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
