@@ -31,7 +31,7 @@ def get_user_id(username):
         return None
 
 # Function to get avatar thumbnail URL with retry logic
-async def get_avatar_thumbnail(user_id, retries=5, delay=5):
+async def get_avatar_thumbnail(user_id, retries=5, delay=3):
     url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
     for attempt in range(retries):
         try:
