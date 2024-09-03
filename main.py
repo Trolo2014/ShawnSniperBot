@@ -30,12 +30,19 @@ def get_user_id(username):
         print(f"Error getting user ID: {e}")
         return None
 
-# Function to get avatar thumbnail URL with retry logic
-async def get_avatar_thumbnail(user_id, retries=6, delay=5):
+# Function to get avatar thumbnail URL with retry logic and exponential backoff
+async def get_avatar_thumbnail(user_id, retries=6, initial_delay=1):
     url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
+    delay = initial_delay
     for attempt in range(retries):
         try:
             response = requests.get(url)
+            if response.status_code == 429:  # Rate limit error
+                print(f"Rate limit hit. Retrying after {delay} seconds...")
+                await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
+                continue
+
             response.raise_for_status()
             data = response.json()
             if 'data' in data and len(data['data']) > 0:
@@ -45,21 +52,31 @@ async def get_avatar_thumbnail(user_id, retries=6, delay=5):
             print(f"Attempt {attempt + 1} failed: {e}")
             if attempt < retries - 1:  # Don't delay after the last attempt
                 await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
     return None
 
-# Function to get game servers with retry logic
-async def get_servers(place_id, cursor=None, retries=3):
+# Function to get game servers with retry logic and exponential backoff
+async def get_servers(place_id, cursor=None, retries=3, initial_delay=15):
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
+    delay = initial_delay
     for attempt in range(retries):
         try:
             response = requests.get(url)
+            if response.status_code == 429:  # Rate limit error
+                print(f"Rate limit hit. Retrying after {delay} seconds...")
+                await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
+                continue
+
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
             print(f"Attempt {attempt + 1} failed: {e}")
-            await asyncio.sleep(15)  # Wait before retrying
+            if attempt < retries - 1:  # Don't delay after the last attempt
+                await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
     return None
 
 # Function to batch fetch thumbnails
@@ -245,10 +262,10 @@ class SnipeCog(commands.Cog):
 
             # Update embed to show cooldown status
             embed.clear_fields()
-            embed.add_field(name="Cooldown", value="Waiting 15 seconds before retrying...", inline=False)
+            embed.add_field(name="Cooldown", value="Waiting 20 seconds before retrying...", inline=False)
             await interaction.edit_original_response(embed=embed)
 
-            await asyncio.sleep(20)  # Wait 15 seconds before checking again
+            await asyncio.sleep(20)  # Wait 20 seconds before checking again
 
         if not found:
             # Player not found after 15 minutes
