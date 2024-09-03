@@ -48,7 +48,7 @@ async def get_avatar_thumbnail(user_id, retries=6, delay=5):
     return None
 
 # Function to get game servers with retry logic
-async def get_servers(place_id, cursor=None, retries=2):
+async def get_servers(place_id, cursor=None, retries=3):
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
