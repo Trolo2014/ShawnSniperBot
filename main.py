@@ -48,7 +48,7 @@ async def get_avatar_thumbnail(user_id, retries=6, delay=5):
     return None
 
 # Function to get game servers with retry logic
-async def get_servers(place_id, cursor=None, retries=6):
+async def get_servers(place_id, cursor=None, retries=2):
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
@@ -59,7 +59,7 @@ async def get_servers(place_id, cursor=None, retries=6):
             return response.json()
         except requests.RequestException as e:
             print(f"Attempt {attempt + 1} failed: {e}")
-            await asyncio.sleep(5)  # Wait before retrying
+            await asyncio.sleep(15)  # Wait before retrying
     return None
 
 # Function to batch fetch thumbnails
