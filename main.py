@@ -4,8 +4,8 @@ import requests
 import os
 import asyncio
 from datetime import datetime, timedelta
-
 from keep_alive import keep_alive
+
 keep_alive()
 
 # Bot setup with intents
@@ -13,6 +13,9 @@ intents = discord.Intents.default()
 intents.message_content = True  # Required for reading message content
 
 bot = commands.Bot(command_prefix='!', intents=intents)
+
+# Global variable for managing command queue
+active_jobs = defaultdict(lambda: None)  # Maps guild_id to the current job in that guild
 
 # Function to get user ID from username
 def get_user_id(username):
@@ -29,6 +32,34 @@ def get_user_id(username):
     except requests.RequestException as e:
         print(f"Error getting user ID: {e}")
         return None
+
+# Function to get username from user ID
+def get_username(user_id):
+    url = f"https://users.roblox.com/v1/users/{user_id}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        return data.get('name', 'Unknown User')
+    except requests.RequestException as e:
+        print(f"Error getting username: {e}")
+        return "Unknown User"
+
+# Function to check T-shirt ownership
+def check_ownership(user_id, tshirt_id):
+    url = f"https://inventory.roblox.com/v1/users/{user_id}/items/details"
+    params = {
+        "assetIds": [tshirt_id],
+        "itemTypes": ["Asset"]
+    }
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        return any(item.get('assetId') == int(tshirt_id) for item in data.get('data', []))
+    except requests.RequestException as e:
+        print(f"Error checking ownership: {e}")
+        return False
 
 # Function to get avatar thumbnail URL with retry logic and exponential backoff
 async def get_avatar_thumbnail(user_id, retries=6, initial_delay=1):
@@ -179,6 +210,42 @@ async def search_player(interaction, place_id, username, embed):
 
     return None
 
+# Cog for checking T-shirt ownership
+class CheckTshirtCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @discord.app_commands.command(name="checktshirtpurchase", description="Check if a user owns a specific T-shirt")
+    @discord.app_commands.describe(user_id="The Roblox User ID", tshirt_id="The T-Shirt Asset ID")
+    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
+    async def checktshirt(self, interaction: discord.Interaction, user_id: str, tshirt_id: str):
+        embed = discord.Embed(color=0x1E90FF)  # Blue color for initial status
+        embed.add_field(name="Checking Purchase Of T-Shirt", value="Loop checking for 5 minutes", inline=False)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+        end_time = datetime.now() + timedelta(minutes=5)
+        while datetime.now() < end_time:
+            ownership_status = check_ownership(user_id, tshirt_id)
+            username = get_username(user_id)
+            
+            if ownership_status:
+                embed.clear_fields()
+                embed.add_field(name="Purchase Detected", value=f"{username} has bought the T-shirt ID {tshirt_id}!", inline=False)
+                await interaction.edit_original_response(embed=embed)
+                return
+            
+            # Update embed status
+            embed.clear_fields()
+            embed.add_field(name="Checking Purchase Of T-Shirt", value="Loop checking for 5 minutes", inline=False)
+            await interaction.edit_original_response(embed=embed)
+            
+            await asyncio.sleep(5)  # Wait 5 seconds before checking again
+
+        # Notify user if the T-shirt was not purchased
+        embed.clear_fields()
+        embed.add_field(name="Check Complete", value=f"{username} has not bought the T-shirt ID {tshirt_id} after 5 minutes.", inline=False)
+        await interaction.edit_original_response(embed=embed)
+
 # Cog for searching player in a specific game
 class SnipeCog(commands.Cog):
     def __init__(self, bot):
@@ -188,10 +255,18 @@ class SnipeCog(commands.Cog):
     @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
     async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: str):
+        if active_jobs.get(interaction.guild.id):
+            await interaction.response.send_message(
+                f"{interaction.user.mention}, another snipe job is already running. Please wait until it completes.",
+                ephemeral=True
+            )
+            return
+
+        active_jobs[interaction.guild.id] = True
         await interaction.response.defer()  # Defer the response to avoid timeout
 
         # Initial embed with progress bar
-        embed = discord.Embed(color=0xFFD700)  # Gold color
+        embed = discord.Embed(color=0xFF0000)  # Bloodish red color
         embed.add_field(name="Fetching Servers", value="Total Servers: 0", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -221,15 +296,24 @@ class SnipeCog(commands.Cog):
             embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
 
         await interaction.edit_original_response(embed=embed)
+        active_jobs[interaction.guild.id] = None
 
     @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 15 minutes")
     @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
     async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
+        if active_jobs.get(interaction.guild.id):
+            await interaction.response.send_message(
+                f"{interaction.user.mention}, another snipe job is already running. Please wait until it completes.",
+                ephemeral=True
+            )
+            return
+
+        active_jobs[interaction.guild.id] = True
         await interaction.response.defer()  # Defer the response to avoid timeout
 
         # Initial embed with progress bar
-        embed = discord.Embed(color=0xFFD700)  # Gold color
+        embed = discord.Embed(color=0xFF0000)  # Bloodish red color
         embed.add_field(name="Status", value="Starting to search...", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -262,10 +346,10 @@ class SnipeCog(commands.Cog):
 
             # Update embed to show cooldown status
             embed.clear_fields()
-            embed.add_field(name="Cooldown", value="Waiting 15 seconds before retrying...", inline=False)
+            embed.add_field(name="Cooldown", value="Waiting 20 seconds before retrying...", inline=False)
             await interaction.edit_original_response(embed=embed)
 
-            await asyncio.sleep(15)  # Wait 15 seconds before checking again
+            await asyncio.sleep(20)  # Wait 20 seconds before checking again
 
         if not found:
             # Player not found after 15 minutes
@@ -273,29 +357,12 @@ class SnipeCog(commands.Cog):
             embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} after 15 minutes", value="", inline=False)
 
         await interaction.edit_original_response(embed=embed)
+        active_jobs[interaction.guild.id] = None
 
-# Cog for checking T-shirt ownership
-class CheckTshirtCog(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @discord.app_commands.command(name="checktshirtpurchase", description="Check if a user owns a specific T-shirt")
-    @discord.app_commands.describe(user_id="The Roblox User ID", tshirt_id="The T-Shirt Asset ID")
-    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-    async def checktshirt(self, interaction: discord.Interaction, user_id: str, tshirt_id: str):
-        # Fetch the username
-        username = get_username(user_id)
-        ownership_status = check_ownership(user_id, tshirt_id)
-
-        if ownership_status:
-            await interaction.response.send_message(f"{username} bought the T-shirt ID {tshirt_id}!")
-        else:
-            await interaction.response.send_message(f"{username} hasn't bought T-shirt {tshirt_id}")
-
-# Register the cog and the command tree
+# Register the cogs and the command tree
 async def setup(bot):
-    await bot.add_cog(SnipeCog(bot))
     await bot.add_cog(CheckTshirtCog(bot))
+    await bot.add_cog(SnipeCog(bot))
     await bot.tree.sync()
 
 # Bot event handler to run the setup function when the bot is ready
@@ -305,4 +372,4 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
 
 # Run the bot using the token stored in environment variables
-bot.run(os.environ.get('DISCORD_BOT_TOKENO'))
+bot.run(os.getenv("DISCORD_BOT_TOKENO"))
