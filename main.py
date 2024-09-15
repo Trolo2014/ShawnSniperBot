@@ -4,6 +4,7 @@ import requests
 import os
 import asyncio
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
 
 from keep_alive import keep_alive
 keep_alive()
@@ -149,64 +150,77 @@ async def search_player(interaction, place_id, username, embed):
     server_data = []
     total_servers = 0
 
-    # Stage 1: Fetching Servers
-    while True:
-        servers = await get_servers(place_id, cursor)
-        if not servers:
-            embed.add_field(name="Error", value="Failed to get servers after retries", inline=False)
-            await interaction.edit_original_response(embed=embed)
-            return None
+    # Use ThreadPoolExecutor for concurrent server fetching and thumbnail processing
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        loop = asyncio.get_event_loop()
 
-        cursor = servers.get("nextPageCursor")
-        total_servers += len(servers.get("data", []))
+        async def fetch_and_process_server_data():
+            nonlocal cursor, total_servers
 
-        # Update embed with the progressively updated total servers
-        embed.clear_fields()
-        embed.add_field(name="Fetching Servers", value=f"Total Servers: {total_servers}", inline=False)
-        await interaction.edit_original_response(embed=embed)
+            while True:
+                servers = await loop.run_in_executor(executor, lambda: get_servers(place_id, cursor))
+                if not servers:
+                    embed.add_field(name="Error", value="Failed to get servers after retries", inline=False)
+                    await interaction.edit_original_response(embed=embed)
+                    return None
 
-        for server in servers.get("data", []):
-            tokens = server.get("playerTokens", [])
-            all_player_tokens.extend(tokens)
-            server_data.extend([(token, server) for token in tokens])
+                cursor = servers.get("nextPageCursor")
+                total_servers += len(servers.get("data", []))
 
-        if not cursor:
-            break
+                # Update embed with the progressively updated total servers
+                embed.clear_fields()
+                embed.add_field(name="Fetching Servers", value=f"Total Servers: {total_servers}", inline=False)
+                await interaction.edit_original_response(embed=embed)
 
-    # Stage 2: After all servers are loaded
-    embed.clear_fields()
-    embed.add_field(name="Fetching Servers", value=f"Total Servers: {total_servers}", inline=False)
-    embed.add_field(name="Status", value="Scanning Servers For Player...", inline=False)
-    embed.add_field(name="Scanning Progress", value="0%", inline=False)
-    await interaction.edit_original_response(embed=embed)
+                for server in servers.get("data", []):
+                    tokens = server.get("playerTokens", [])
+                    all_player_tokens.extend(tokens)
+                    server_data.extend([(token, server) for token in tokens])
 
-    chunk_size = 100
-    total_chunks = (len(all_player_tokens) + chunk_size - 1) // chunk_size
-    scanned_chunks = 0
+                if not cursor:
+                    break
 
-    while all_player_tokens:
-        chunk = all_player_tokens[:chunk_size]
-        all_player_tokens = all_player_tokens[chunk_size:]
-        thumbnails = fetch_thumbnails(chunk)
-        if not thumbnails:
-            embed.add_field(name="Error", value="Failed to fetch thumbnails", inline=False)
-            await interaction.edit_original_response(embed=embed)
-            return
+        # Fetch servers and process tokens concurrently
+        await fetch_and_process_server_data()
 
-        for thumb in thumbnails.get("data", []):
-            if thumb["imageUrl"] == target_thumbnail_url:
-                for token, server in server_data:
-                    if token == thumb["requestId"].split(":")[1]:
-                        return server.get("id")
+        # Stage 2: Concurrently fetch thumbnails
+        async def process_tokens():
+            nonlocal all_player_tokens, server_data
 
-        scanned_chunks += 1
-        progress = (scanned_chunks / total_chunks) * 100
+            chunk_size = 100
+            total_chunks = (len(all_player_tokens) + chunk_size - 1) // chunk_size
+            scanned_chunks = 0
 
-        # Update the embed with scanning progress
-        embed.set_field_at(2, name="Scanning Progress", value=f"{progress:.2f}%", inline=False)
-        await interaction.edit_original_response(embed=embed)
+            async def fetch_thumbnails_for_chunk(chunk):
+                return await loop.run_in_executor(executor, lambda: fetch_thumbnails(chunk))
 
-    return None
+            while all_player_tokens:
+                chunk = all_player_tokens[:chunk_size]
+                all_player_tokens = all_player_tokens[chunk_size:]
+                thumbnails = await fetch_thumbnails_for_chunk(chunk)
+                if not thumbnails:
+                    embed.add_field(name="Error", value="Failed to fetch thumbnails", inline=False)
+                    await interaction.edit_original_response(embed=embed)
+                    return None
+
+                for thumb in thumbnails.get("data", []):
+                    if thumb["imageUrl"] == target_thumbnail_url:
+                        for token, server in server_data:
+                            if token == thumb["requestId"].split(":")[1]:
+                                return server.get("id")
+
+                scanned_chunks += 1
+                progress = (scanned_chunks / total_chunks) * 100
+
+                # Update the embed with scanning progress
+                embed.set_field_at(2, name="Scanning Progress", value=f"{progress:.2f}%", inline=False)
+                await interaction.edit_original_response(embed=embed)
+                print(f"Scanning Progress: {progress:.2f}%")
+
+        # Process tokens and fetch thumbnails
+        job_id = await process_tokens()
+
+    return job_id
 
 # Cog for checking T-shirt ownership
 class CheckTshirtCog(commands.Cog):
