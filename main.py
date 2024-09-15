@@ -4,8 +4,8 @@ import requests
 import os
 import asyncio
 from datetime import datetime, timedelta
-from keep_alive import keep_alive
 
+from keep_alive import keep_alive
 keep_alive()
 
 # Bot setup with intents
@@ -14,8 +14,8 @@ intents.message_content = True  # Required for reading message content
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Global variable for managing command queue
-active_jobs = defaultdict(lambda: None)  # Maps guild_id to the current job in that guild
+# Global variable to track active jobs
+active_jobs = {}
 
 # Function to get user ID from username
 def get_user_id(username):
@@ -40,29 +40,27 @@ def get_username(user_id):
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        return data.get('name', 'Unknown User')
+        if 'name' in data:
+            return data['name']
+        return None
     except requests.RequestException as e:
         print(f"Error getting username: {e}")
-        return "Unknown User"
+        return None
 
 # Function to check T-shirt ownership
 def check_ownership(user_id, tshirt_id):
-    url = f"https://inventory.roblox.com/v1/users/{user_id}/items/details"
-    params = {
-        "assetIds": [tshirt_id],
-        "itemTypes": ["Asset"]
-    }
+    url = f"https://api.roblox.com/users/{user_id}/assets/{tshirt_id}/checkOwnership"
     try:
-        response = requests.get(url, params=params)
+        response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        return any(item.get('assetId') == int(tshirt_id) for item in data.get('data', []))
+        return data.get("owned", False)
     except requests.RequestException as e:
-        print(f"Error checking ownership: {e}")
+        print(f"Error checking T-shirt ownership: {e}")
         return False
 
 # Function to get avatar thumbnail URL with retry logic and exponential backoff
-async def get_avatar_thumbnail(user_id, retries=10, initial_delay=1):
+async def get_avatar_thumbnail(user_id, retries=6, initial_delay=1):
     url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
     delay = initial_delay
     for attempt in range(retries):
@@ -87,7 +85,7 @@ async def get_avatar_thumbnail(user_id, retries=10, initial_delay=1):
     return None
 
 # Function to get game servers with retry logic and exponential backoff
-async def get_servers(place_id, cursor=None, retries=10, initial_delay=1):
+async def get_servers(place_id, cursor=None, retries=3, initial_delay=15):
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
@@ -136,13 +134,13 @@ def fetch_thumbnails(tokens):
 async def search_player(interaction, place_id, username, embed):
     user_id = get_user_id(username)
     if not user_id:
-        embed.add_field(name="Error", value="User not found")
+        embed.add_field(name="Error", value="User not found", inline=False)
         await interaction.edit_original_response(embed=embed)
         return None
 
     target_thumbnail_url = await get_avatar_thumbnail(user_id)
     if not target_thumbnail_url:
-        embed.add_field(name="Error", value="Failed to get avatar thumbnail")
+        embed.add_field(name="Error", value="Failed to get avatar thumbnail", inline=False)
         await interaction.edit_original_response(embed=embed)
         return None
 
@@ -155,7 +153,7 @@ async def search_player(interaction, place_id, username, embed):
     while True:
         servers = await get_servers(place_id, cursor)
         if not servers:
-            embed.add_field(name="Error", value="Failed to get servers after retries")
+            embed.add_field(name="Error", value="Failed to get servers after retries", inline=False)
             await interaction.edit_original_response(embed=embed)
             return None
 
@@ -191,7 +189,7 @@ async def search_player(interaction, place_id, username, embed):
         all_player_tokens = all_player_tokens[chunk_size:]
         thumbnails = fetch_thumbnails(chunk)
         if not thumbnails:
-            embed.add_field(name="Error", value="Failed to fetch thumbnails")
+            embed.add_field(name="Error", value="Failed to fetch thumbnails", inline=False)
             await interaction.edit_original_response(embed=embed)
             return
 
@@ -216,34 +214,43 @@ class CheckTshirtCog(commands.Cog):
         self.bot = bot
 
     @discord.app_commands.command(name="checktshirtpurchase", description="Check if a user owns a specific T-shirt")
-    @discord.app_commands.describe(user_id="The Roblox User ID", tshirt_id="The T-Shirt Asset ID")
+    @discord.app_commands.describe(username="The Roblox username", tshirt_id="The T-Shirt Asset ID")
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-    async def checktshirt(self, interaction: discord.Interaction, user_id: str, tshirt_id: str):
-        embed = discord.Embed(color=0x1E90FF)  # Blue color for initial status
+    async def checktshirt(self, interaction: discord.Interaction, username: str, tshirt_id: str):
+        await interaction.response.defer()  # Defer the response to avoid timeout
+
+        # Initial embed with progress
+        embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Checking Purchase Of T-Shirt", value="Loop checking for 5 minutes", inline=False)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+        user_id = get_user_id(username)
+        if not user_id:
+            embed.clear_fields()
+            embed.add_field(name="Error", value="User not found", inline=False)
+            await interaction.edit_original_response(embed=embed)
+            return
+
         end_time = datetime.now() + timedelta(minutes=5)
         while datetime.now() < end_time:
             ownership_status = check_ownership(user_id, tshirt_id)
-            username = get_username(user_id)
-            
+
             if ownership_status:
                 embed.clear_fields()
-                embed.add_field(name="Purchase Detected", value=f"{username} has bought the T-shirt ID {tshirt_id}!", inline=False)
+                embed.add_field(name="Purchase Detected", value=f"{username} has bought T-shirt ID {tshirt_id}!", inline=False)
                 await interaction.edit_original_response(embed=embed)
                 return
-            
-            # Update embed status
+
+            # Update embed to show checking status
             embed.clear_fields()
             embed.add_field(name="Checking Purchase Of T-Shirt", value="Loop checking for 5 minutes", inline=False)
             await interaction.edit_original_response(embed=embed)
-            
+
             await asyncio.sleep(5)  # Wait 5 seconds before checking again
 
-        # Notify user if the T-shirt was not purchased
+        # If no purchase detected after 5 minutes
         embed.clear_fields()
-        embed.add_field(name="Check Complete", value=f"{username} has not bought the T-shirt ID {tshirt_id} after 5 minutes.", inline=False)
+        embed.add_field(name="Purchase Not Detected", value=f"{username} hasn't bought T-shirt ID {tshirt_id} after 5 minutes", inline=False)
         await interaction.edit_original_response(embed=embed)
 
 # Cog for searching player in a specific game
@@ -255,18 +262,18 @@ class SnipeCog(commands.Cog):
     @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
     async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: str):
-        if active_jobs.get(interaction.guild.id):
-            await interaction.response.send_message(
-                f"{interaction.user.mention}, another snipe job is already running. Please wait until it completes.",
-                ephemeral=True
-            )
+        # Check if there is an active job
+        if any(active_jobs.values()):
+            embed = discord.Embed(color=0xFFD700)  # Gold color
+            embed.add_field(name="Active Job", value="Please wait until the current search is finished", inline=False)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
-        active_jobs[interaction.guild.id] = True
+        active_jobs[interaction.user.id] = True
         await interaction.response.defer()  # Defer the response to avoid timeout
 
         # Initial embed with progress bar
-        embed = discord.Embed(color=0xFF0000)  # Bloodish red color
+        embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Fetching Servers", value="Total Servers: 0", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -275,45 +282,33 @@ class SnipeCog(commands.Cog):
         if job_id:
             # Player found case
             embed.clear_fields()
-            embed.add_field(
-                name=f"Player: {username} Found!",
-                value=f"",
-                inline=False
-            )
-            embed.add_field(
-                name=f"DeepLink",
-                value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}",
-                inline=False
-            )
-            embed.add_field(
-                name="Instructions:",
-                value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL",
-                inline=False
-            )
+            embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
+            embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
+            embed.add_field(name="Instructions:", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
         else:
             # Player not found case
             embed.clear_fields()
             embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
 
         await interaction.edit_original_response(embed=embed)
-        active_jobs[interaction.guild.id] = None
+        active_jobs[interaction.user.id] = False
 
     @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 15 minutes")
     @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
     async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
-        if active_jobs.get(interaction.guild.id):
-            await interaction.response.send_message(
-                f"{interaction.user.mention}, another snipe job is already running. Please wait until it completes.",
-                ephemeral=True
-            )
+        # Check if there is an active job
+        if any(active_jobs.values()):
+            embed = discord.Embed(color=0xFFD700)  # Gold color
+            embed.add_field(name="Active Job", value="Please wait until the current search is finished", inline=False)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
-        active_jobs[interaction.guild.id] = True
+        active_jobs[interaction.user.id] = True
         await interaction.response.defer()  # Defer the response to avoid timeout
 
         # Initial embed with progress bar
-        embed = discord.Embed(color=0xFF0000)  # Bloodish red color
+        embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Status", value="Starting to search...", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -326,21 +321,9 @@ class SnipeCog(commands.Cog):
             if job_id:
                 # Player found case
                 embed.clear_fields()
-                embed.add_field(
-                    name=f"Player: {username} Found!",
-                    value=f"",
-                    inline=False
-                )
-                embed.add_field(
-                    name=f"DeepLink",
-                    value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}",
-                    inline=False
-                )
-                embed.add_field(
-                    name="Instructions:",
-                    value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL",
-                    inline=False
-                )
+                embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
+                embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
+                embed.add_field(name="Instructions:", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
                 found = True
                 break  # Exit loop if player is found
 
@@ -357,9 +340,9 @@ class SnipeCog(commands.Cog):
             embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} after 15 minutes", value="", inline=False)
 
         await interaction.edit_original_response(embed=embed)
-        active_jobs[interaction.guild.id] = None
+        active_jobs[interaction.user.id] = False
 
-# Register the cogs and the command tree
+# Register the cog and the command tree
 async def setup(bot):
     await bot.add_cog(CheckTshirtCog(bot))
     await bot.add_cog(SnipeCog(bot))
@@ -372,4 +355,4 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
 
 # Run the bot using the token stored in environment variables
-bot.run(os.getenv("DISCORD_BOT_TOKENO"))
+bot.run(os.environ.get('DISCORD_BOT_TOKENO'))
