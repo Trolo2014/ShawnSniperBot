@@ -270,7 +270,7 @@ class SnipeCog(commands.Cog):
                     user = self.bot.get_user(user_id)
                     if user:
                         embed = discord.Embed(color=0xFFD700)  # Gold color
-                        embed.add_field(name="Active Job", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
+                        embed.add_field(name="Sniper", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
                         await interaction.response.send_message(embed=embed, ephemeral=True)
                         return
 
