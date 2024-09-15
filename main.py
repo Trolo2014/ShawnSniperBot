@@ -49,7 +49,7 @@ def get_username(user_id):
 
 # Function to check T-shirt ownership
 def check_ownership(user_id, tshirt_id):
-    url = f"https://https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{tshirt_id}/is-owned"
+    url = f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{tshirt_id}/is-owned"
     try:
         response = requests.get(url)
         response.raise_for_status()
