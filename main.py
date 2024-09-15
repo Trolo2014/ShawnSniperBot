@@ -264,10 +264,15 @@ class SnipeCog(commands.Cog):
     async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: str):
         # Check if there is an active job
         if any(active_jobs.values()):
-            embed = discord.Embed(color=0xFFD700)  # Gold color
-            embed.add_field(name="Active Job", value="Please wait until the current search is finished", inline=False)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
+            # Find the user who is currently running a command
+            for user_id, _ in active_jobs.items():
+                if user_id != interaction.user.id:
+                    user = self.bot.get_user(user_id)
+                    if user:
+                        embed = discord.Embed(color=0xFFD700)  # Gold color
+                        embed.add_field(name="Active Job", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
+                        await interaction.response.send_message(embed=embed, ephemeral=True)
+                        return
 
         active_jobs[interaction.user.id] = True
         await interaction.response.defer()  # Defer the response to avoid timeout
@@ -299,10 +304,15 @@ class SnipeCog(commands.Cog):
     async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
         # Check if there is an active job
         if any(active_jobs.values()):
-            embed = discord.Embed(color=0xFFD700)  # Gold color
-            embed.add_field(name="Active Job", value="Please wait until the current search is finished", inline=False)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
+            # Find the user who is currently running a command
+            for user_id, _ in active_jobs.items():
+                if user_id != interaction.user.id:
+                    user = self.bot.get_user(user_id)
+                    if user:
+                        embed = discord.Embed(color=0xFFD700)  # Gold color
+                        embed.add_field(name="Active Job", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
+                        await interaction.response.send_message(embed=embed, ephemeral=True)
+                        return
 
         active_jobs[interaction.user.id] = True
         await interaction.response.defer()  # Defer the response to avoid timeout
