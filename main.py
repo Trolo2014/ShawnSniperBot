@@ -19,7 +19,7 @@ active_jobs = {}
 
 # Function to get user ID from username
 def get_user_id(username):
-    url = f"https://users.roblox.com/v1/usernames/users"
+    url = "https://users.roblox.com/v1/usernames/users"
     params = {"usernames": [username]}
     try:
         response = requests.post(url, json=params)
@@ -221,7 +221,7 @@ class CheckTshirtCog(commands.Cog):
 
         # Initial embed with progress
         embed = discord.Embed(color=0xFFD700)  # Gold color
-        embed.add_field(name="Checking Purchase Of T-Shirt", value="Loop checking for 5 minutes", inline=False)
+        embed.add_field(name="Checking Purchase Of T-Shirt", value="Checking if purchase is made...", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         user_id = get_user_id(username)
@@ -243,10 +243,10 @@ class CheckTshirtCog(commands.Cog):
 
             # Update embed to show checking status
             embed.clear_fields()
-            embed.add_field(name="Checking Purchase Of T-Shirt", value="Loop checking for 5 minutes", inline=False)
+            embed.add_field(name="Checking Purchase Of T-Shirt", value="Checking if purchase is made...", inline=False)
             await interaction.edit_original_response(embed=embed)
 
-            await asyncio.sleep(5)  # Wait 5 seconds before checking again
+            await asyncio.sleep(10)  # Wait 10 seconds before checking again
 
         # If no purchase detected after 5 minutes
         embed.clear_fields()
@@ -365,4 +365,4 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
 
 # Run the bot using the token stored in environment variables
-bot.run(os.environ.get('DISCORD_BOT_TOKENO'))
+bot.run(os.environ.get('DISCORD_BOT_TOKEN'))
