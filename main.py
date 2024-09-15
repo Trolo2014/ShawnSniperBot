@@ -49,12 +49,12 @@ def get_username(user_id):
 
 # Function to check T-shirt ownership
 def check_ownership(user_id, tshirt_id):
-    url = f"https://api.roblox.com/users/{user_id}/assets/{tshirt_id}/checkOwnership"
+    url = f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{tshirt_id}/is-owned"
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        return data.get("owned", False)
+        return data.get("isOwned", False)
     except requests.RequestException as e:
         print(f"Error checking T-shirt ownership: {e}")
         return False
@@ -233,136 +233,23 @@ class CheckTshirtCog(commands.Cog):
 
         end_time = datetime.now() + timedelta(minutes=5)
         while datetime.now() < end_time:
-            ownership_status = check_ownership(user_id, tshirt_id)
-
-            if ownership_status:
+            is_owner = check_ownership(user_id, tshirt_id)
+            if is_owner:
                 embed.clear_fields()
-                embed.add_field(name="Purchase Detected", value=f"{username} has bought T-shirt ID {tshirt_id}!", inline=False)
+                embed.add_field(name="Success", value=f"User {username} has purchased the T-shirt!", inline=False)
                 await interaction.edit_original_response(embed=embed)
                 return
 
-            # Update embed to show checking status
-            embed.clear_fields()
-            embed.add_field(name="Checking Purchase Of T-Shirt", value="Checking if purchase is made...", inline=False)
-            await interaction.edit_original_response(embed=embed)
+            # Waiting before checking again
+            await asyncio.sleep(5)
 
-            await asyncio.sleep(10)  # Wait 10 seconds before checking again
-
-        # If no purchase detected after 5 minutes
         embed.clear_fields()
-        embed.add_field(name="Purchase Not Detected", value=f"{username} hasn't bought T-shirt ID {tshirt_id} after 5 minutes", inline=False)
+        embed.add_field(name="Timeout", value=f"User {username} has not purchased the T-shirt after 5 minutes.", inline=False)
         await interaction.edit_original_response(embed=embed)
 
-# Cog for searching player in a specific game
-class SnipeCog(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+# Add the cog to the bot
+bot.add_cog(CheckTshirtCog(bot))
 
-    @discord.app_commands.command(name="snipe", description="Search for a player in a specific game")
-    @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
-    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-    async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: str):
-        # Check if there is an active job
-        if any(active_jobs.values()):
-            # Find the user who is currently running a command
-            for user_id, _ in active_jobs.items():
-                if user_id != interaction.user.id:
-                    user = self.bot.get_user(user_id)
-                    if user:
-                        embed = discord.Embed(color=0xFFD700)  # Gold color
-                        embed.add_field(name="Sniper", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
-                        await interaction.response.send_message(embed=embed, ephemeral=True)
-                        return
-
-        active_jobs[interaction.user.id] = True
-        await interaction.response.defer()  # Defer the response to avoid timeout
-
-        # Initial embed with progress bar
-        embed = discord.Embed(color=0xFFD700)  # Gold color
-        embed.add_field(name="Fetching Servers", value="Total Servers: 0", inline=False)
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
-        job_id = await search_player(interaction, place_id, username, embed)
-
-        if job_id:
-            # Player found case
-            embed.clear_fields()
-            embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
-            embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
-            embed.add_field(name="Instructions:", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
-        else:
-            # Player not found case
-            embed.clear_fields()
-            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
-
-        await interaction.edit_original_response(embed=embed)
-        active_jobs[interaction.user.id] = False
-
-    @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 15 minutes")
-    @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
-    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-    async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
-        # Check if there is an active job
-        if any(active_jobs.values()):
-            # Find the user who is currently running a command
-            for user_id, _ in active_jobs.items():
-                if user_id != interaction.user.id:
-                    user = self.bot.get_user(user_id)
-                    if user:
-                        embed = discord.Embed(color=0xFFD700)  # Gold color
-                        embed.add_field(name="Active Job", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
-                        await interaction.response.send_message(embed=embed, ephemeral=True)
-                        return
-
-        active_jobs[interaction.user.id] = True
-        await interaction.response.defer()  # Defer the response to avoid timeout
-
-        # Initial embed with progress bar
-        embed = discord.Embed(color=0xFFD700)  # Gold color
-        embed.add_field(name="Status", value="Starting to search...", inline=False)
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
-        end_time = datetime.now() + timedelta(minutes=15)
-        found = False
-
-        while datetime.now() < end_time:
-            job_id = await search_player(interaction, place_id, username, embed)
-
-            if job_id:
-                # Player found case
-                embed.clear_fields()
-                embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
-                embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
-                embed.add_field(name="Instructions:", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
-                found = True
-                break  # Exit loop if player is found
-
-            # Update embed to show cooldown status
-            embed.clear_fields()
-            embed.add_field(name="Cooldown", value="Waiting 20 seconds before retrying...", inline=False)
-            await interaction.edit_original_response(embed=embed)
-
-            await asyncio.sleep(20)  # Wait 20 seconds before checking again
-
-        if not found:
-            # Player not found after 15 minutes
-            embed.clear_fields()
-            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} after 15 minutes", value="", inline=False)
-
-        await interaction.edit_original_response(embed=embed)
-        active_jobs[interaction.user.id] = False
-
-# Register the cog and the command tree
-async def setup(bot):
-    await bot.add_cog(CheckTshirtCog(bot))
-    await bot.add_cog(SnipeCog(bot))
-    await bot.tree.sync()
-
-# Bot event handler to run the setup function when the bot is ready
-@bot.event
-async def on_ready():
-    await setup(bot)
-    print(f'Logged in as {bot.user}')
-
-# Run the bot using the token stored in environment variables
-bot.run(os.environ.get('DISCORD_BOT_TOKENO'))
+# Run the bot
+DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
+bot.run(DISCORD_BOT_TOKENO)
