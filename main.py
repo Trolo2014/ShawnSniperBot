@@ -250,7 +250,7 @@ class CheckTshirtCog(commands.Cog):
             embed.add_field(name="T Shirt Purchase Detector", value=f"Scanning For Purchase \n\nTime Left: {time_str}", inline=False)
             await message.edit(embed=embed)
 
-            await asyncio.sleep(0.75)  # Wait 15 seconds before checking again
+            await asyncio.sleep(1)  # Wait 15 seconds before checking again
 
         # After 5 minutes of checking
         embed.clear_fields()
