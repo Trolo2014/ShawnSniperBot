@@ -368,4 +368,4 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
 
 # Run the bot using the token stored in environment variables
-bot.run(os.getenv('DISCORD_TOKENO'))
+bot.run(os.environ.get('DISCORD_BOT_TOKENO'))
