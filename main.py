@@ -5,6 +5,9 @@ import os
 import asyncio
 from datetime import datetime, timedelta
 
+from keep_alive import keep_alive
+keep_alive()
+
 # Bot setup with intents
 intents = discord.Intents.default()
 intents.message_content = True  # Required for reading message content
