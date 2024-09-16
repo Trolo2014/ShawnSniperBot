@@ -54,6 +54,7 @@ def check_ownership(user_id, tshirt_id):
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
+        print(f"Response Data: {data}")  # Log the response for debugging
         return data.get("owned", False)
     except requests.RequestException as e:
         print(f"Error checking T-shirt ownership: {e}")
@@ -235,6 +236,8 @@ class CheckTshirtCog(commands.Cog):
         while datetime.now() < end_time:
             ownership_status = check_ownership(user_id, tshirt_id)
 
+            print(f"Checked ownership status for {username}: {ownership_status}")  # Log ownership status
+
             if ownership_status:
                 embed.clear_fields()
                 embed.add_field(name="Purchase Detected", value=f"{username} has bought T-shirt ID {tshirt_id}!", inline=False)
@@ -365,4 +368,4 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
 
 # Run the bot using the token stored in environment variables
-bot.run(os.environ.get('DISCORD_BOT_TOKENO'))
+bot.run(os.getenv('DISCORD_TOKENO'))
