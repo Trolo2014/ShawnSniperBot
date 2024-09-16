@@ -5,9 +5,6 @@ import os
 import asyncio
 from datetime import datetime, timedelta
 
-from keep_alive import keep_alive
-keep_alive()
-
 # Bot setup with intents
 intents = discord.Intents.default()
 intents.message_content = True  # Required for reading message content
@@ -54,7 +51,6 @@ def check_ownership(user_id, tshirt_id):
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        print(f"Response Data: {data}")  # Log the response for debugging
         return data.get("owned", False)
     except requests.RequestException as e:
         print(f"Error checking T-shirt ownership: {e}")
@@ -220,7 +216,6 @@ class CheckTshirtCog(commands.Cog):
     async def checktshirt(self, interaction: discord.Interaction, username: str, tshirt_id: str):
         await interaction.response.defer()  # Defer the response to avoid timeout
 
-        # Initial embed with progress
         embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Checking Purchase Of T-Shirt", value="Checking if purchase is made...", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
@@ -232,28 +227,14 @@ class CheckTshirtCog(commands.Cog):
             await interaction.edit_original_response(embed=embed)
             return
 
-        end_time = datetime.now() + timedelta(minutes=5)
-        while datetime.now() < end_time:
-            ownership_status = check_ownership(user_id, tshirt_id)
-
-            print(f"Checked ownership status for {username}: {ownership_status}")  # Log ownership status
-
-            if ownership_status:
-                embed.clear_fields()
-                embed.add_field(name="Purchase Detected", value=f"{username} has bought T-shirt ID {tshirt_id}!", inline=False)
-                await interaction.edit_original_response(embed=embed)
-                return
-
-            # Update embed to show checking status
+        ownership_status = check_ownership(user_id, tshirt_id)
+        if ownership_status:
             embed.clear_fields()
-            embed.add_field(name="Checking Purchase Of T-Shirt", value="Checking if purchase is made...", inline=False)
-            await interaction.edit_original_response(embed=embed)
+            embed.add_field(name="Purchase Detected", value=f"{username} has bought T-shirt ID {tshirt_id}!", inline=False)
+        else:
+            embed.clear_fields()
+            embed.add_field(name="Purchase Not Detected", value=f"{username} hasn't bought T-shirt ID {tshirt_id}.", inline=False)
 
-            await asyncio.sleep(10)  # Wait 10 seconds before checking again
-
-        # If no purchase detected after 5 minutes
-        embed.clear_fields()
-        embed.add_field(name="Purchase Not Detected", value=f"{username} hasn't bought T-shirt ID {tshirt_id} after 5 minutes", inline=False)
         await interaction.edit_original_response(embed=embed)
 
 # Cog for searching player in a specific game
