@@ -41,20 +41,20 @@ def get_username(user_id):
             return data['name']
         return None
     except requests.RequestException as e:
-        print(f"Error getting username: {e}")
         return None
+
 
 # Function to check T-shirt ownership
 def check_ownership(user_id, tshirt_id):
     url = f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{tshirt_id}/is-owned"
     try:
         response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        return data.get("owned", False)
+        output = response.json()
+        return output == True  # Return True if the entire output is True, else False
     except requests.RequestException as e:
-        print(f"Error checking T-shirt ownership: {e}")
         return False
+
+
 
 # Function to get avatar thumbnail URL with retry logic and exponential backoff
 async def get_avatar_thumbnail(user_id, retries=25, initial_delay=1):
@@ -206,6 +206,7 @@ async def search_player(interaction, place_id, username, embed):
     return None
 
 # Cog for checking T-shirt ownership
+
 class CheckTshirtCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -216,26 +217,42 @@ class CheckTshirtCog(commands.Cog):
     async def checktshirt(self, interaction: discord.Interaction, username: str, tshirt_id: str):
         await interaction.response.defer()  # Defer the response to avoid timeout
 
-        embed = discord.Embed(color=0xFFD700)  # Gold color
-        embed.add_field(name="Checking Purchase Of T-Shirt", value="Checking if purchase is made...", inline=False)
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
         user_id = get_user_id(username)
         if not user_id:
-            embed.clear_fields()
+            embed = discord.Embed(color=0xFFD700)  # Gold color
             embed.add_field(name="Error", value="User not found", inline=False)
             await interaction.edit_original_response(embed=embed)
             return
 
-        ownership_status = check_ownership(user_id, tshirt_id)
-        if ownership_status:
-            embed.clear_fields()
-            embed.add_field(name="Purchase Detected", value=f"{username} has bought T-shirt ID {tshirt_id}!", inline=False)
-        else:
-            embed.clear_fields()
-            embed.add_field(name="Purchase Not Detected", value=f"{username} hasn't bought T-shirt ID {tshirt_id}.", inline=False)
+        embed = discord.Embed(color=0xFFD700)  # Gold color
+        embed.add_field(name="Checking Purchase Of T-Shirt", value="Starting checks...", inline=False)
+        message = await interaction.followup.send(embed=embed, ephemeral=True)
 
-        await interaction.edit_original_response(embed=embed)
+        end_time = datetime.now() + timedelta(minutes=15)
+        while datetime.now() < end_time:
+            ownership_status = check_ownership(user_id, tshirt_id)
+            if ownership_status:
+                embed.clear_fields()
+                embed.add_field(name="Purchase Detected", value=f"{username} has bought T-shirt ID {tshirt_id}!", inline=False)
+                await message.edit(embed=embed)
+                return
+
+            # Calculate the remaining time
+            remaining_time = end_time - datetime.now()
+            minutes, seconds = divmod(remaining_time.seconds, 60)
+            time_str = f"{minutes}m {seconds}s"
+
+            # Update embed with real-time countdown status
+            embed.clear_fields()
+            embed.add_field(name="T Shirt Purchase Detector", value=f"Scanning For Purchase \n\nTime Left: {time_str}", inline=False)
+            await message.edit(embed=embed)
+
+            await asyncio.sleep(0.75)  # Wait 15 seconds before checking again
+
+        # After 5 minutes of checking
+        embed.clear_fields()
+        embed.add_field(name="Status", value=f"Finished checking. {username} does not own T-shirt ID {tshirt_id}.", inline=False)
+        await message.edit(embed=embed)
 
 # Cog for searching player in a specific game
 class SnipeCog(commands.Cog):
