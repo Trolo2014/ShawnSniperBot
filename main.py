@@ -209,31 +209,24 @@ class CheckTshirtCog(commands.Cog):
         self.bot = bot
 
     @discord.app_commands.command(name="checktshirtpurchase", description="Check if a user owns a specific T-shirt")
-    @discord.app_commands.describe(username="The Roblox username", tshirt_id="The T-Shirt Asset ID")
-    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-    async def checktshirt(self, interaction: discord.Interaction, username: str, tshirt_id: str):
-        await interaction.response.defer()  # Defer the response to avoid timeout
-
+    @discord.app_commands.describe(username="The Roblox username", tshirt_id="The ID of the T-shirt")
+    async def check_tshirt_purchase(self, interaction: discord.Interaction, username: str, tshirt_id: int):
         user_id = get_user_id(username)
         if not user_id:
-            embed = discord.Embed(color=0xFFD700)  # Gold color
+            embed = discord.Embed(color=0xFF0000)  # Red color
             embed.add_field(name="Error", value="User not found", inline=False)
-            await interaction.edit_original_response(embed=embed)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
-        embed = discord.Embed(color=0xFFD700)  # Gold color
-        embed.add_field(name="Checking Purchase Of T-Shirt", value="Starting checks...", inline=False)
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
-        owns_tshirt = check_ownership(user_id, tshirt_id)
-        if owns_tshirt:
+        ownership = check_ownership(user_id, tshirt_id)
+        if ownership:
             embed = discord.Embed(color=0x00FF00)  # Green color
             embed.add_field(name="T-Shirt Ownership", value=f"{username} owns the T-shirt with ID {tshirt_id}.", inline=False)
         else:
             embed = discord.Embed(color=0xFF0000)  # Red color
             embed.add_field(name="T-Shirt Ownership", value=f"{username} does not own the T-shirt with ID {tshirt_id}.", inline=False)
 
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # Cog for sniping
 class SnipeCog(commands.Cog):
