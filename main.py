@@ -169,7 +169,7 @@ async def search_player(interaction, place_id, username, embed):
         await interaction.edit_original_response(embed=embed)
 
         # Process chunks of player tokens
-        chunk_size = 250
+        chunk_size = 200
         while all_player_tokens:
             chunk = all_player_tokens[:chunk_size]
             all_player_tokens = all_player_tokens[chunk_size:]
