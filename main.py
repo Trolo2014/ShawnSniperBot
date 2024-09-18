@@ -164,7 +164,7 @@ async def search_player(interaction, place_id, username, embed):
         # Update embed with progressively updated total servers and players
         embed.clear_fields()
         embed.add_field(name="Fetching Servers!", value=f"Total Servers collected: {total_servers}", inline=False)
-        embed.add_field(name="Total Players collected But Not Matched:", value=f"{total_players_collected}", inline=False)
+        embed.add_field(name="Matching Players ID With Target ID Per 100 Servers:", value=f"{total_players_collected}", inline=False)
         await interaction.edit_original_response(embed=embed)
 
         for server in servers.get("data", []):
