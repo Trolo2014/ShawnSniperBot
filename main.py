@@ -165,7 +165,7 @@ async def search_player(interaction, place_id, username, embed):
 
         embed.clear_fields()
         embed.add_field(name="Fetching Servers", value=f"Total Servers Collected: {total_servers}", inline=False)
-        embed.add_field(name="Total Players collected But Not Matched", value=f"{total_players_not_matched}", inline=False)
+        embed.add_field(name="Matching Players ID With Target ID Per 100 Servers", value=f"{total_players_not_matched}", inline=False)
         await interaction.edit_original_response(embed=embed)
 
         # Process chunks of player tokens
@@ -187,7 +187,7 @@ async def search_player(interaction, place_id, username, embed):
 
             # Update the total players not matched field
             total_players_not_matched -= len(chunk)
-            embed.set_field_at(1, name="Matching Players With Target", value=f"{total_players_not_matched}", inline=False)
+            embed.set_field_at(1, name="Matching Players ID With Target ID Per 100 Servers", value=f"{total_players_not_matched}", inline=False)
             await interaction.edit_original_response(embed=embed)
 
     return None
@@ -267,7 +267,7 @@ class SnipeCog(commands.Cog):
         # Initial embed with progress bar
         embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Fetching Servers", value="Total Servers collected: 0", inline=False)
-        embed.add_field(name="Total Players collected But Not Matched", value="0", inline=False)
+        embed.add_field(name="Matching Players ID With Target ID Per 100 Servers", value="0", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         job_id = await search_player(interaction, place_id, username, embed)
@@ -309,7 +309,7 @@ class SnipeCog(commands.Cog):
         embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Status", value="Starting to search...", inline=False)
         embed.add_field(name="Total Servers collected", value="0", inline=False)
-        embed.add_field(name="Total Players collected But Not Matched", value="0", inline=False)
+        embed.add_field(name="Matching Players ID With Target ID Per 100 Servers", value="0", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         end_time = datetime.now() + timedelta(minutes=15)
