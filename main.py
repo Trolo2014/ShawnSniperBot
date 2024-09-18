@@ -164,7 +164,7 @@ async def search_player(interaction, place_id, username, embed):
             server_data.extend([(token, server) for token in tokens])
 
         embed.clear_fields()
-        embed.add_field(name="Fetching Servers", value=f"Total Servers collected: {total_servers}", inline=False)
+        embed.add_field(name="Fetching Servers", value=f"Total Servers Collected: {total_servers}", inline=False)
         embed.add_field(name="Total Players collected But Not Matched", value=f"{total_players_not_matched}", inline=False)
         await interaction.edit_original_response(embed=embed)
 
@@ -187,7 +187,7 @@ async def search_player(interaction, place_id, username, embed):
 
             # Update the total players not matched field
             total_players_not_matched -= len(chunk)
-            embed.set_field_at(1, name="Total Players collected But Not Matched", value=f"{total_players_not_matched}", inline=False)
+            embed.set_field_at(1, name="Matching Players With Target", value=f"{total_players_not_matched}", inline=False)
             await interaction.edit_original_response(embed=embed)
 
     return None
