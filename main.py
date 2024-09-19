@@ -105,8 +105,8 @@ async def get_servers(place_id, cursor=None, retries=25, initial_delay=1):
                 delay *= 2  # Exponential backoff
     return None
 
-# Function to batch fetch thumbnails
-def fetch_thumbnails(tokens):
+# Function to batch fetch thumbnails with retry logic and exponential backoff
+async def fetch_thumbnails(tokens, retries=5, initial_delay=1):
     body = [
         {
             "requestId": f"0:{token}:AvatarHeadshot:150x150:png:regular",
@@ -119,14 +119,30 @@ def fetch_thumbnails(tokens):
         for token in tokens
     ]
     url = "https://thumbnails.roblox.com/v1/batch"
-    try:
-        response = requests.post(url, json=body)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        print(f"Error fetching thumbnails: {e}")
-        return None
+    delay = initial_delay
 
+    for attempt in range(retries):
+        try:
+            response = requests.post(url, json=body)
+            if response.status_code == 429:  # Rate limit error
+                print(f"Rate limit hit. Retrying after {delay} seconds...")
+                await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
+                continue
+
+            response.raise_for_status()  # Raise an error if the status code isn't 2xx
+            return response.json()
+        except requests.RequestException as e:
+            print(f"Attempt {attempt + 1} failed: {e}")
+            if attempt < retries - 1:  # Don't delay after the last attempt
+                await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
+
+    print(f"Failed to fetch thumbnails after {retries} attempts.")
+    return None
+
+
+# Function to search for player
 async def search_player(interaction, place_id, username, embed):
     user_id = get_user_id(username)
     if not user_id:
@@ -144,11 +160,8 @@ async def search_player(interaction, place_id, username, embed):
     all_player_tokens = []
     server_data = []
     total_servers = 0
-    total_players_collected = 0
-    matched_players = 0
-    total_server_batches = 0
+    total_players_not_matched = 0
 
-    # Stage 1: Fetching Servers
     while True:
         servers = await get_servers(place_id, cursor)
         if not servers:
@@ -158,59 +171,41 @@ async def search_player(interaction, place_id, username, embed):
 
         cursor = servers.get("nextPageCursor")
         total_servers += len(servers.get("data", []))
-        total_players_collected += sum(len(server.get("playerTokens", [])) for server in servers.get("data", []))
-
-        # Update embed with progressively updated total servers and players
-        embed.clear_fields()
-        embed.add_field(name="Fetching Servers!", value=f"Total Servers collected: {total_servers}", inline=False)
-        embed.add_field(name="Matching Players ID With Target ID Per 100 Servers:", value=f"{total_players_collected}", inline=False)
-        await interaction.edit_original_response(embed=embed)
 
         for server in servers.get("data", []):
             tokens = server.get("playerTokens", [])
             all_player_tokens.extend(tokens)
+            total_players_not_matched += len(tokens)
             server_data.extend([(token, server) for token in tokens])
 
-        if not cursor:
-            break
-
-    # Stage 2: Matching Players in Background
-    chunk_size = 100
-    total_chunks = (len(all_player_tokens) + chunk_size - 1) // chunk_size
-    scanned_chunks = 0
-
-    while all_player_tokens:
-        chunk = all_player_tokens[:chunk_size]
-        all_player_tokens = all_player_tokens[chunk_size:]
-        thumbnails = fetch_thumbnails(chunk)
-        if not thumbnails:
-            embed.add_field(name="Error", value="Failed to fetch thumbnails", inline=False)
-            await interaction.edit_original_response(embed=embed)
-            return
-
-        for thumb in thumbnails.get("data", []):
-            if thumb["imageUrl"] == target_thumbnail_url:
-                for token, server in server_data:
-                    if token == thumb["requestId"].split(":")[1]:
-                        embed.clear_fields()
-                        embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
-                        embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={server.get('id')}", inline=False)
-                        embed.add_field(name="Instructions:", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
-                        await interaction.edit_original_response(embed=embed)
-                        return server.get("id")
-
-        scanned_chunks += 1
-        matched_players += 1
-        progress = (scanned_chunks / total_chunks) * 100
-
-        # Update the embed with matching progress
-        embed.set_field_at(2, name="Matching Players ID With Target ID Per 100 Servers", value=f"{matched_players} per {scanned_chunks * 100} servers", inline=False)
+        embed.clear_fields()
+        embed.add_field(name="Fetching Servers", value=f"Total Servers Checked: {total_servers}", inline=False)
+        embed.add_field(name="Matching Players ID With Target ID", value=f"{total_players_not_matched}", inline=False)
         await interaction.edit_original_response(embed=embed)
 
+        # Process chunks of player tokens
+        chunk_size = 100
+        while all_player_tokens:
+            chunk = all_player_tokens[:chunk_size]
+            all_player_tokens = all_player_tokens[chunk_size:]
+            thumbnails = fetch_thumbnails(chunk)
+            if not thumbnails:
+                embed.add_field(name="Error", value="Failed to fetch thumbnails", inline=False)
+                await interaction.edit_original_response(embed=embed)
+                return
+
+            for thumb in thumbnails.get("data", []):
+                if thumb["imageUrl"] == target_thumbnail_url:
+                    for token, server in server_data:
+                        if token == thumb["requestId"].split(":")[1]:
+                            return server.get("id")
+
+            # Update the total players not matched field
+            total_players_not_matched -= len(chunk)
+            embed.set_field_at(1, name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
+            await interaction.edit_original_response(embed=embed)
+
     return None
-
-
-
 # Cog for checking T-shirt ownership
 
 class CheckTshirtCog(commands.Cog):
@@ -286,8 +281,8 @@ class SnipeCog(commands.Cog):
 
         # Initial embed with progress bar
         embed = discord.Embed(color=0xFFD700)  # Gold color
-        embed.add_field(name="Fetching Servers", value="Total Servers collected: 0", inline=False)
-        embed.add_field(name="Total Players collected But Not Matched", value="0", inline=False)
+        embed.add_field(name="Fetching Servers", value="Total Servers Checked: 0", inline=False)
+        embed.add_field(name="Matching Players ID With Target ID", value="0", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         job_id = await search_player(interaction, place_id, username, embed)
@@ -328,8 +323,8 @@ class SnipeCog(commands.Cog):
         # Initial embed with progress bar
         embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Status", value="Starting to search...", inline=False)
-        embed.add_field(name="Total Servers collected", value="0", inline=False)
-        embed.add_field(name="Total Players collected But Not Matched", value="0", inline=False)
+        embed.add_field(name="Total Servers Checked", value="0", inline=False)
+        embed.add_field(name="Matching Players ID With Target ID", value="0", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         end_time = datetime.now() + timedelta(minutes=15)
