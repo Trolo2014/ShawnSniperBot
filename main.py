@@ -290,7 +290,7 @@ class SnipeCog(commands.Cog):
         # Initial embed with progress information
         embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Fetching Servers", value="Total Servers Checked: 0", inline=False)
-        embed.add_field(name="Matching Players ID With Target ID", value="0", inline=False)
+        embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         job_id = await search_player(interaction, place_id, username, embed)
@@ -331,7 +331,7 @@ class SnipeCog(commands.Cog):
         embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Status", value="Starting to search...", inline=False)
         embed.add_field(name="Total Servers Checked", value="0", inline=False)
-        embed.add_field(name="Matching Players ID With Target ID", value="0", inline=False)
+        embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         end_time = datetime.now() + timedelta(minutes=15)
