@@ -56,17 +56,18 @@ def check_ownership(user_id, tshirt_id):
     except requests.RequestException as e:
         return False
 
-# Function to get avatar thumbnail URL with retry logic and exponential backoff
-async def get_avatar_thumbnail(user_id, retries=500, initial_delay=5):
+# Function to get avatar thumbnail URL with retry logic
+async def get_avatar_thumbnail(user_id, retries=25, initial_delay=5): 
     url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
     delay = initial_delay
-    for attempt in range(retries):
+    original_retries = retries  # Store the original retry count
+    while retries > 0:  # Use a while loop to control retries
         try:
             response = requests.get(url)
             if response.status_code == 429:  # Rate limit error
                 print(f"Rate limit hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-               # delay *= 2  # Exponential backoff
+                retries -= 1  # Decrement retry count
                 continue
 
             response.raise_for_status()
@@ -74,39 +75,45 @@ async def get_avatar_thumbnail(user_id, retries=500, initial_delay=5):
             if 'data' in data and len(data['data']) > 0:
                 return data['data'][0]['imageUrl']
             return None
+            
         except requests.RequestException as e:
-            print(f"Attempt {attempt + 1} failed: {e}")
-            if attempt < retries - 1:  # Don't delay after the last attempt
-                await asyncio.sleep(delay)
-              #  delay *= 2  # Exponential backoff
+            print(f"Failed: {e}")
+            retries -= 1  # Decrement retry count
+            
+    # Reset retries to original count after success
+    retries = original_retries
     return None
 
-# Function to get game servers with retry logic and exponential backoff
-async def get_servers(place_id, cursor=None, retries=500, initial_delay=5):
+# Function to get game servers with retry logic
+async def get_servers(place_id, cursor=None, retries=25, initial_delay=5): 
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
     delay = initial_delay
-    for attempt in range(retries):
+    original_retries = retries  # Store the original retry count
+    
+    while retries > 0:  # Use a while loop to control retries
         try:
             response = requests.get(url)
             if response.status_code == 429:  # Rate limit error
                 print(f"Rate limit hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-              #  delay *= 2  # Exponential backoff
+                retries -= 1  # Decrement retry count
                 continue
 
             response.raise_for_status()
             return response.json()
+            
         except requests.RequestException as e:
-            print(f"Attempt {attempt + 1} failed: {e}")
-            if attempt < retries - 1:  # Don't delay after the last attempt
-                await asyncio.sleep(delay)
-               # delay *= 2  # Exponential backoff
+            print(f"Failed: {e}")
+            retries -= 1  # Decrement retry count
+            
+    # Reset retries to original count after success
+    retries = original_retries
     return None
 
-# Function to batch fetch thumbnails with retry logic and exponential backoff
-async def fetch_thumbnails(tokens, retries=500, initial_delay=5):
+# Function to batch fetch thumbnails with retry logic
+async def fetch_thumbnails(tokens, retries=25, initial_delay=5): 
     body = [
         {
             "requestId": f"0:{token}:AvatarHeadshot:150x150:png:regular",
@@ -120,8 +127,9 @@ async def fetch_thumbnails(tokens, retries=500, initial_delay=5):
     ]
     url = "https://thumbnails.roblox.com/v1/batch"
     delay = initial_delay
-    
-    for attempt in range(retries):
+    original_retries = retries  # Store the original retry count
+
+    while retries > 0:  # Use a while loop to control retries
         try:
             response = requests.post(url, json=body)
             
@@ -129,20 +137,18 @@ async def fetch_thumbnails(tokens, retries=500, initial_delay=5):
             if response.status_code == 429:
                 print(f"Rate limit hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-               # delay *= 2  # Exponential backoff
+                retries -= 1  # Decrement retry count
                 continue  # Retry
 
             response.raise_for_status()  # Raise error for other non-200 status codes
             return response.json()
         
         except requests.RequestException as e:
-            print(f"Attempt {attempt + 1} failed: {e}")
-            if attempt < retries - 1:  # Delay if there are retries left
-                await asyncio.sleep(delay)
-              #  delay *= 2  # Exponential backoff
-    
-    # Return None if all retries fail
-    print("Failed to fetch thumbnails after retries.")
+            print(f"Failed: {e}")
+            retries -= 1  # Decrement retry count
+            
+    # Reset retries to original count after success
+    retries = original_retries
     return None
 
 # Function to search for player
