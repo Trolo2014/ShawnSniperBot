@@ -105,8 +105,8 @@ async def get_servers(place_id, cursor=None, retries=25, initial_delay=2):
                 delay *= 2  # Exponential backoff
     return None
 
-# Function to batch fetch thumbnails
-def fetch_thumbnails(tokens):
+# Function to batch fetch thumbnails with retry logic and exponential backoff
+async def fetch_thumbnails(tokens, retries=25, initial_delay=2):
     body = [
         {
             "requestId": f"0:{token}:AvatarHeadshot:150x150:png:regular",
@@ -119,13 +119,31 @@ def fetch_thumbnails(tokens):
         for token in tokens
     ]
     url = "https://thumbnails.roblox.com/v1/batch"
-    try:
-        response = requests.post(url, json=body)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        print(f"Error fetching thumbnails: {e}")
-        return None
+    delay = initial_delay
+    
+    for attempt in range(retries):
+        try:
+            response = requests.post(url, json=body)
+            
+            # Handle rate limit
+            if response.status_code == 429:
+                print(f"Rate limit hit. Retrying after {delay} seconds...")
+                await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
+                continue  # Retry
+
+            response.raise_for_status()  # Raise error for other non-200 status codes
+            return response.json()
+        
+        except requests.RequestException as e:
+            print(f"Attempt {attempt + 1} failed: {e}")
+            if attempt < retries - 1:  # Delay if there are retries left
+                await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
+    
+    # Return None if all retries fail
+    print("Failed to fetch thumbnails after retries.")
+    return None
 
 # Function to search for player
 async def search_player(interaction, place_id, username, embed):
@@ -173,7 +191,7 @@ async def search_player(interaction, place_id, username, embed):
         while all_player_tokens:
             chunk = all_player_tokens[:chunk_size]
             all_player_tokens = all_player_tokens[chunk_size:]
-            thumbnails = fetch_thumbnails(chunk)
+            thumbnails = await fetch_thumbnails(chunk)
             if not thumbnails:
                 embed.add_field(name="Error", value="Failed to fetch thumbnails", inline=False)
                 await interaction.edit_original_response(embed=embed)
