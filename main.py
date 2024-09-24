@@ -189,7 +189,7 @@ async def search_player(interaction, place_id, username, embed):
 
         embed.clear_fields()
         embed.add_field(name="Fetching Servers", value=f"Total Servers Checked: {total_servers}", inline=False)
-        embed.add_field(name="Matching Players ID With Target ID", value=f"{total_players_not_matched}", inline=False)
+        embed.add_field(name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
         await interaction.edit_original_response(embed=embed)
 
         # Process chunks of player tokens
