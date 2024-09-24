@@ -57,7 +57,7 @@ def check_ownership(user_id, tshirt_id):
         return False
 
 # Function to get avatar thumbnail URL with retry logic and exponential backoff
-async def get_avatar_thumbnail(user_id, retries=25, initial_delay=5):
+async def get_avatar_thumbnail(user_id, retries=500, initial_delay=5):
     url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
     delay = initial_delay
     for attempt in range(retries):
@@ -82,7 +82,7 @@ async def get_avatar_thumbnail(user_id, retries=25, initial_delay=5):
     return None
 
 # Function to get game servers with retry logic and exponential backoff
-async def get_servers(place_id, cursor=None, retries=25, initial_delay=5):
+async def get_servers(place_id, cursor=None, retries=500, initial_delay=5):
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
@@ -106,7 +106,7 @@ async def get_servers(place_id, cursor=None, retries=25, initial_delay=5):
     return None
 
 # Function to batch fetch thumbnails with retry logic and exponential backoff
-async def fetch_thumbnails(tokens, retries=25, initial_delay=5):
+async def fetch_thumbnails(tokens, retries=500, initial_delay=5):
     body = [
         {
             "requestId": f"0:{token}:AvatarHeadshot:150x150:png:regular",
