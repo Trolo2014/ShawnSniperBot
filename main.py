@@ -275,8 +275,7 @@ class SnipeCog(commands.Cog):
     async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: str):
         # Check if there is an active job
         if any(active_jobs.values()):
-            # Find the user who is currently running a command
-            for user_id, _ in active_jobs.items():
+            for user_id in active_jobs:
                 if user_id != interaction.user.id:
                     user = self.bot.get_user(user_id)
                     if user:
@@ -288,7 +287,7 @@ class SnipeCog(commands.Cog):
         active_jobs[interaction.user.id] = True
         await interaction.response.defer()  # Defer the response to avoid timeout
 
-        # Initial embed with progress bar
+        # Initial embed with progress information
         embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Fetching Servers", value="Total Servers Checked: 0", inline=False)
         embed.add_field(name="Matching Players ID With Target ID", value="0", inline=False)
@@ -316,8 +315,7 @@ class SnipeCog(commands.Cog):
     async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
         # Check if there is an active job
         if any(active_jobs.values()):
-            # Find the user who is currently running a command
-            for user_id, _ in active_jobs.items():
+            for user_id in active_jobs:
                 if user_id != interaction.user.id:
                     user = self.bot.get_user(user_id)
                     if user:
@@ -329,7 +327,7 @@ class SnipeCog(commands.Cog):
         active_jobs[interaction.user.id] = True
         await interaction.response.defer()  # Defer the response to avoid timeout
 
-        # Initial embed with progress bar
+        # Initial embed with progress information
         embed = discord.Embed(color=0xFFD700)  # Gold color
         embed.add_field(name="Status", value="Starting to search...", inline=False)
         embed.add_field(name="Total Servers Checked", value="0", inline=False)
