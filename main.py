@@ -57,7 +57,7 @@ def check_ownership(user_id, tshirt_id):
         return False
 
 # Function to get avatar thumbnail URL with retry logic and exponential backoff
-async def get_avatar_thumbnail(user_id, retries=25, initial_delay=2):
+async def get_avatar_thumbnail(user_id, retries=25, initial_delay=5):
     url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
     delay = initial_delay
     for attempt in range(retries):
@@ -66,7 +66,7 @@ async def get_avatar_thumbnail(user_id, retries=25, initial_delay=2):
             if response.status_code == 429:  # Rate limit error
                 print(f"Rate limit hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-                delay *= 2  # Exponential backoff
+               # delay *= 2  # Exponential backoff
                 continue
 
             response.raise_for_status()
@@ -78,11 +78,11 @@ async def get_avatar_thumbnail(user_id, retries=25, initial_delay=2):
             print(f"Attempt {attempt + 1} failed: {e}")
             if attempt < retries - 1:  # Don't delay after the last attempt
                 await asyncio.sleep(delay)
-                delay *= 2  # Exponential backoff
+              #  delay *= 2  # Exponential backoff
     return None
 
 # Function to get game servers with retry logic and exponential backoff
-async def get_servers(place_id, cursor=None, retries=25, initial_delay=2):
+async def get_servers(place_id, cursor=None, retries=25, initial_delay=5):
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
@@ -93,7 +93,7 @@ async def get_servers(place_id, cursor=None, retries=25, initial_delay=2):
             if response.status_code == 429:  # Rate limit error
                 print(f"Rate limit hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-                delay *= 2  # Exponential backoff
+              #  delay *= 2  # Exponential backoff
                 continue
 
             response.raise_for_status()
@@ -102,11 +102,11 @@ async def get_servers(place_id, cursor=None, retries=25, initial_delay=2):
             print(f"Attempt {attempt + 1} failed: {e}")
             if attempt < retries - 1:  # Don't delay after the last attempt
                 await asyncio.sleep(delay)
-                delay *= 2  # Exponential backoff
+               # delay *= 2  # Exponential backoff
     return None
 
 # Function to batch fetch thumbnails with retry logic and exponential backoff
-async def fetch_thumbnails(tokens, retries=25, initial_delay=2):
+async def fetch_thumbnails(tokens, retries=25, initial_delay=5):
     body = [
         {
             "requestId": f"0:{token}:AvatarHeadshot:150x150:png:regular",
@@ -129,7 +129,7 @@ async def fetch_thumbnails(tokens, retries=25, initial_delay=2):
             if response.status_code == 429:
                 print(f"Rate limit hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-                delay *= 2  # Exponential backoff
+               # delay *= 2  # Exponential backoff
                 continue  # Retry
 
             response.raise_for_status()  # Raise error for other non-200 status codes
@@ -139,7 +139,7 @@ async def fetch_thumbnails(tokens, retries=25, initial_delay=2):
             print(f"Attempt {attempt + 1} failed: {e}")
             if attempt < retries - 1:  # Delay if there are retries left
                 await asyncio.sleep(delay)
-                delay *= 2  # Exponential backoff
+              #  delay *= 2  # Exponential backoff
     
     # Return None if all retries fail
     print("Failed to fetch thumbnails after retries.")
