@@ -151,6 +151,7 @@ async def fetch_thumbnails(tokens, retries=120, initial_delay=1):
     retries = original_retries
     return None
 
+
 # Function to search for player
 async def search_player(interaction, place_id, username, embed):
     user_id = get_user_id(username)
@@ -171,7 +172,12 @@ async def search_player(interaction, place_id, username, embed):
     total_servers = 0
     total_players_not_matched = 0
 
-    while True:
+    # Limit to 3 times in each loop cycle
+    fetch_limit = 3
+    fetch_count = 0
+
+    while fetch_count < fetch_limit:
+        # Run get_servers up to 3 times in this loop cycle
         servers = await get_servers(place_id, cursor)
         if not servers:
             embed.add_field(name="Error", value="Failed to get servers after retries", inline=False)
@@ -187,34 +193,41 @@ async def search_player(interaction, place_id, username, embed):
             total_players_not_matched += len(tokens)
             server_data.extend([(token, server) for token in tokens])
 
+        # Update the embed with progress
         embed.clear_fields()
         embed.add_field(name="Fetching Servers", value=f"Total Servers Checked: {total_servers}", inline=False)
         embed.add_field(name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
         await interaction.edit_original_response(embed=embed)
 
-        # Process chunks of player tokens
-        chunk_size = 100
-        while all_player_tokens:
-            chunk = all_player_tokens[:chunk_size]
-            all_player_tokens = all_player_tokens[chunk_size:]
-            thumbnails = await fetch_thumbnails(chunk)
-            if not thumbnails:
-                embed.add_field(name="Error", value="Failed to fetch thumbnails", inline=False)
-                await interaction.edit_original_response(embed=embed)
-                return
+        # Increment fetch count and break after reaching the limit
+        fetch_count += 1
+        if fetch_count >= fetch_limit:
+            break
 
-            for thumb in thumbnails.get("data", []):
-                if thumb["imageUrl"] == target_thumbnail_url:
-                    for token, server in server_data:
-                        if token == thumb["requestId"].split(":")[1]:
-                            return server.get("id")
-
-            # Update the total players not matched field
-            total_players_not_matched -= len(chunk)
-            embed.set_field_at(1, name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
+    # Process chunks of player tokens (outside the fetch loop)
+    chunk_size = 100
+    while all_player_tokens:
+        chunk = all_player_tokens[:chunk_size]
+        all_player_tokens = all_player_tokens[chunk_size:]
+        thumbnails = await fetch_thumbnails(chunk)
+        if not thumbnails:
+            embed.add_field(name="Error", value="Failed to fetch thumbnails", inline=False)
             await interaction.edit_original_response(embed=embed)
+            return
+
+        for thumb in thumbnails.get("data", []):
+            if thumb["imageUrl"] == target_thumbnail_url:
+                for token, server in server_data:
+                    if token == thumb["requestId"].split(":")[1]:
+                        return server.get("id")
+
+        # Update the total players not matched field
+        total_players_not_matched -= len(chunk)
+        embed.set_field_at(1, name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
+        await interaction.edit_original_response(embed=embed)
 
     return None
+
 # Cog for checking T-shirt ownership
 
 class CheckTshirtCog(commands.Cog):
