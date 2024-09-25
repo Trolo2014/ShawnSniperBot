@@ -3,14 +3,10 @@ from discord.ext import commands
 import requests
 import os
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 
 from keep_alive import keep_alive
 keep_alive()
-
-# Setup ThreadPoolExecutor for non-async tasks
-executor = ThreadPoolExecutor()
 
 # Bot setup with intents
 intents = discord.Intents.default()
@@ -21,13 +17,12 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Global variable to track active jobs
 active_jobs = {}
 
-# Function to get user ID from username (moved to thread pool)
-async def get_user_id(username):
+# Function to get user ID from username
+def get_user_id(username):
     url = "https://users.roblox.com/v1/usernames/users"
     params = {"usernames": [username]}
     try:
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(executor, lambda: requests.post(url, json=params))
+        response = requests.post(url, json=params)
         response.raise_for_status()
         data = response.json()
         if data and 'data' in data and len(data['data']) > 0:
@@ -38,18 +33,30 @@ async def get_user_id(username):
         print(f"Error getting user ID: {e}")
         return None
 
-# Function to check T-shirt ownership (moved to thread pool)
-async def check_ownership(user_id, tshirt_id):
+# Function to get username from user ID
+def get_username(user_id):
+    url = f"https://users.roblox.com/v1/users/{user_id}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        if 'name' in data:
+            return data['name']
+        return None
+    except requests.RequestException as e:
+        return None
+
+# Function to check T-shirt ownership
+def check_ownership(user_id, tshirt_id):
     url = f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{tshirt_id}/is-owned"
     try:
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(executor, lambda: requests.get(url))
+        response = requests.get(url)
         output = response.json()
         return output == True  # Return True if the entire output is True, else False
     except requests.RequestException as e:
         return False
 
-# Function to get avatar thumbnail URL with retry logic (async)
+# Function to get avatar thumbnail URL with retry logic
 async def get_avatar_thumbnail(user_id, retries=120, initial_delay=1): 
     url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
     delay = initial_delay
@@ -77,14 +84,14 @@ async def get_avatar_thumbnail(user_id, retries=120, initial_delay=1):
     retries = original_retries
     return None
 
-# Function to get game servers with retry logic (async and chunked processing)
-async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
+# Function to get game servers with retry logic
+async def get_servers(place_id, cursor=None, retries=120, initial_delay=1): 
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
     delay = initial_delay
     original_retries = retries  # Store the original retry count
-
+    
     while retries > 0:  # Use a while loop to control retries
         try:
             response = requests.get(url)
@@ -96,16 +103,17 @@ async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
 
             response.raise_for_status()
             return response.json()
-
+            
         except requests.RequestException as e:
             print(f"Failed: {e}")
             retries -= 1  # Decrement retry count
-
+            
+    # Reset retries to original count after success
     retries = original_retries
     return None
 
-# Function to batch fetch thumbnails with retry logic (parallel task processing)
-async def fetch_thumbnails(tokens, retries=120, initial_delay=1):
+# Function to batch fetch thumbnails with retry logic
+async def fetch_thumbnails(tokens, retries=120, initial_delay=1): 
     body = [
         {
             "requestId": f"0:{token}:AvatarHeadshot:150x150:png:regular",
@@ -124,25 +132,29 @@ async def fetch_thumbnails(tokens, retries=120, initial_delay=1):
     while retries > 0:  # Use a while loop to control retries
         try:
             response = requests.post(url, json=body)
-            if response.status_code == 429:  # Rate limit error
+            
+            # Handle rate limit
+            if response.status_code == 429:
                 print(f"Rate limit hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
                 retries -= 1  # Decrement retry count
-                continue
+                continue  # Retry
 
-            response.raise_for_status()
+            response.raise_for_status()  # Raise error for other non-200 status codes
             return response.json()
-
+        
         except requests.RequestException as e:
             print(f"Failed: {e}")
             retries -= 1  # Decrement retry count
-
+            
+    # Reset retries to original count after success
     retries = original_retries
     return None
 
-# Function to search for player (async task with parallel fetching)
+
+# Function to search for player
 async def search_player(interaction, place_id, username, embed):
-    user_id = await get_user_id(username)
+    user_id = get_user_id(username)
     if not user_id:
         embed.add_field(name="Error", value="User not found", inline=False)
         await interaction.edit_original_response(embed=embed)
@@ -163,7 +175,7 @@ async def search_player(interaction, place_id, username, embed):
     while True:
         fetch_count = 0
 
-        # Fetch servers in parallel (3 batches at a time)
+        # Fetch servers up to 3 times before processing player tokens
         while fetch_count < 3:
             servers = await get_servers(place_id, cursor)
             if not servers:
@@ -186,19 +198,15 @@ async def search_player(interaction, place_id, username, embed):
             embed.add_field(name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
             await interaction.edit_original_response(embed=embed)
 
+            # Increment fetch count
             fetch_count += 1
 
-        # Process player tokens in chunks of 100 and run the fetching in parallel
+        # Process chunks of player tokens
         chunk_size = 100
-        tasks = []
         while all_player_tokens:
             chunk = all_player_tokens[:chunk_size]
             all_player_tokens = all_player_tokens[chunk_size:]
-            tasks.append(fetch_thumbnails(chunk))
-
-        # Parallel processing of the thumbnails
-        results = await asyncio.gather(*tasks)
-        for thumbnails in results:
+            thumbnails = await fetch_thumbnails(chunk)
             if not thumbnails:
                 embed.add_field(name="Error", value="Failed to fetch thumbnails", inline=False)
                 await interaction.edit_original_response(embed=embed)
