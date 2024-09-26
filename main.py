@@ -57,7 +57,7 @@ def check_ownership(user_id, tshirt_id):
         return False
 
 # Function to get avatar thumbnail URL with retry logic
-async def get_avatar_thumbnail(user_id, retries=120, initial_delay=1): 
+async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25): 
     url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
     delay = initial_delay
     original_retries = retries  # Store the original retry count
@@ -85,7 +85,7 @@ async def get_avatar_thumbnail(user_id, retries=120, initial_delay=1):
     return None
 
 # Function to get game servers with retry logic
-async def get_servers(place_id, cursor=None, retries=120, initial_delay=1): 
+async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25): 
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
@@ -113,7 +113,7 @@ async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
     return None
 
 # Function to batch fetch thumbnails with retry logic
-async def fetch_thumbnails(tokens, retries=120, initial_delay=1): 
+async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25): 
     body = [
         {
             "requestId": f"0:{token}:AvatarHeadshot:150x150:png:regular",
@@ -323,7 +323,7 @@ class SnipeCog(commands.Cog):
         await interaction.edit_original_response(embed=embed)
         active_jobs[interaction.user.id] = False
 
-    @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 15 minutes")
+    @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 10 minutes")
     @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
     async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
@@ -348,7 +348,7 @@ class SnipeCog(commands.Cog):
         embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-        end_time = datetime.now() + timedelta(minutes=15)
+        end_time = datetime.now() + timedelta(minutes=10)
         found = False
 
         while datetime.now() < end_time:
@@ -371,9 +371,9 @@ class SnipeCog(commands.Cog):
             await asyncio.sleep(20)  # Wait 20 seconds before checking again
 
         if not found:
-            # Player not found after 15 minutes
+            # Player not found after 10 minutes
             embed.clear_fields()
-            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} after 15 minutes", value="", inline=False)
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} after 10 minutes", value="", inline=False)
 
         await interaction.edit_original_response(embed=embed)
         active_jobs[interaction.user.id] = False
