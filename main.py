@@ -176,7 +176,7 @@ async def search_player(interaction, place_id, username, embed):
         fetch_count = 0
 
         # Fetch servers up to 3 times before processing player tokens
-        while fetch_count < 2:
+        while fetch_count < 10:
             servers = await get_servers(place_id, cursor)
             if not servers:
                 embed.add_field(name="Error", value="Failed to get servers after retries", inline=False)
