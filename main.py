@@ -84,45 +84,33 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
     retries = original_retries
     return None
 
-
-# List of URLs: main URL first, then sub URLs
-urls = [
-    "https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100",  # Main URL
-    "https://subserver.onrender.com",  # Sub URL 1
-    "https://subserver-1.onrender.com",  # Sub URL 2
-]
-
-async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25):
-    original_retries = retries  # Store the original retry count
+# Function to get game servers with retry logic
+async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25): 
+    url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
+    if cursor:
+        url += f"&cursor={cursor}"
     delay = initial_delay
+    original_retries = retries  # Store the original retry count
     
-    for url in urls:
-        if cursor:
-            current_url = url.format(place_id=place_id) + f"&cursor={cursor}"
-        else:
-            current_url = url.format(place_id=place_id)
-        
-        while retries > 0:  # Use a while loop to control retries
-            try:
-                response = requests.get(current_url)
-                if response.status_code == 429:  # Rate limit error
-                    print(f"Rate limit hit on {current_url}. Retrying after {delay} seconds...")
-                    await asyncio.sleep(delay)
-                    retries -= 1  # Decrement retry count
-                    continue
-
-                response.raise_for_status()
-                return response.json()  # Return the successful response
-
-            except requests.RequestException as e:
-                print(f"Failed on {current_url}: {e}")
+    while retries > 0:  # Use a while loop to control retries
+        try:
+            response = requests.get(url)
+            if response.status_code == 429:  # Rate limit error
+                print(f"Rate limit hit. Retrying after {delay} seconds...")
+                await asyncio.sleep(delay)
                 retries -= 1  # Decrement retry count
+                continue
 
-        # Reset retries to original count after trying one URL
-        retries = original_retries  
-
-    return None  # Return None if all URLs fail
-
+            response.raise_for_status()
+            return response.json()
+            
+        except requests.RequestException as e:
+            print(f"Failed: {e}")
+            retries -= 1  # Decrement retry count
+            
+    # Reset retries to original count after success
+    retries = original_retries
+    return None
 
 # Function to batch fetch thumbnails with retry logic
 async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25): 
