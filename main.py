@@ -235,7 +235,7 @@ class CheckTshirtCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @discord.app_commands.command(name="checktshirtpurchase", description="Check if a user owns a specific T-shirt")
+    @discord.app_commands.command(name="checktshirtpurchase", description="Loop Check if a user owns a specific T-shirt For 10 Minutes")
     @discord.app_commands.describe(username="The Roblox username", tshirt_id="The T-Shirt Asset ID")
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
     async def checktshirt(self, interaction: discord.Interaction, username: str, tshirt_id: str):
@@ -249,10 +249,10 @@ class CheckTshirtCog(commands.Cog):
             return
 
         embed = discord.Embed(color=0xFFD700)  # Gold color
-        embed.add_field(name="Checking Purchase Of T-Shirt", value="Starting checks...", inline=False)
+        embed.add_field(name="Checking Purchase Of T-Shirt", value="Starting check...", inline=False)
         message = await interaction.followup.send(embed=embed, ephemeral=True)
 
-        end_time = datetime.now() + timedelta(minutes=15)
+        end_time = datetime.now() + timedelta(minutes=10)
         while datetime.now() < end_time:
             ownership_status = check_ownership(user_id, tshirt_id)
             if ownership_status:
@@ -271,11 +271,11 @@ class CheckTshirtCog(commands.Cog):
             embed.add_field(name="T Shirt Purchase Detector", value=f"Scanning For Purchase \n\nTime Left: {time_str}", inline=False)
             await message.edit(embed=embed)
 
-            await asyncio.sleep(1)  # Wait 15 seconds before checking again
+            await asyncio.sleep(1)  # Wait 1 second before checking again
 
         # After 5 minutes of checking
         embed.clear_fields()
-        embed.add_field(name="Status", value=f"Finished checking. {username} does not own T-shirt ID {tshirt_id}.", inline=False)
+        embed.add_field(name="Status", value=f"Scan Finished {username} did not purchase {tshirt_id} T Shirt In Duration of 10 minutes.", inline=False)
         await message.edit(embed=embed)
 
 # Cog for searching player in a specific game
@@ -314,7 +314,8 @@ class SnipeCog(commands.Cog):
             embed.clear_fields()
             embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
             embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
-            embed.add_field(name="Instructions:", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
+            embed.add_field(name="Instructions For DeepLink", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
+            embed.add_field(name="Server ID For Exploit", value=f"{job_id}", inline=False)
         else:
             # Player not found case
             embed.clear_fields()
@@ -359,16 +360,17 @@ class SnipeCog(commands.Cog):
                 embed.clear_fields()
                 embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
                 embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
-                embed.add_field(name="Instructions:", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
+                embed.add_field(name="Instructions For DeepLink", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
+                embed.add_field(name="Server ID For Exploit", value=f"{job_id}", inline=False)
                 found = True
                 break  # Exit loop if player is found
 
             # Update embed to show cooldown status
             embed.clear_fields()
-            embed.add_field(name="Cooldown", value="Waiting 20 seconds before retrying...", inline=False)
+            embed.add_field(name="Cooldown", value="Waiting 10 seconds before retrying...", inline=False)
             await interaction.edit_original_response(embed=embed)
 
-            await asyncio.sleep(20)  # Wait 20 seconds before checking again
+            await asyncio.sleep(10)  # Wait 20 seconds before checking again
 
         if not found:
             # Player not found after 10 minutes
