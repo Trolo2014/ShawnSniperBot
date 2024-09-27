@@ -96,7 +96,7 @@ async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25):
         try:
             response = requests.get(url)
             if response.status_code == 429:  # Rate limit error
-                print(f"Rate limit hit. Retrying after {delay} seconds...")
+                print(f"Rate limit Fetching Servers hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
                 retries -= 1  # Decrement retry count
                 continue
@@ -135,7 +135,7 @@ async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25):
             
             # Handle rate limit
             if response.status_code == 429:
-                print(f"Rate limit hit. Retrying after {delay} seconds...")
+                print(f"Rate limit Fetching Thumbnails hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
                 retries -= 1  # Decrement retry count
                 continue  # Retry
