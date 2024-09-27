@@ -367,10 +367,10 @@ class SnipeCog(commands.Cog):
 
             # Update embed to show cooldown status
             embed.clear_fields()
-            embed.add_field(name="Cooldown", value="Waiting 10 seconds before retrying...", inline=False)
+            embed.add_field(name="Cooldown", value="Waiting 20 seconds before retrying...", inline=False)
             await interaction.edit_original_response(embed=embed)
 
-            await asyncio.sleep(10)  # Wait 20 seconds before checking again
+            await asyncio.sleep(20)  # Wait 20 seconds before checking again
 
         if not found:
             # Player not found after 10 minutes
