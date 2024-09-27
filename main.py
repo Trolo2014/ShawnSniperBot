@@ -84,56 +84,32 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
     retries = original_retries
     return None
 
-# Function to generate random IP addresses as proxies
-def generate_random_ip():
-    return f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}"
-
-def generate_random_proxies(count=10, port=8080):
-    proxies = []
-    for _ in range(count):
-        ip = generate_random_ip()
-        proxies.append(f"{ip}:{port}")
-    return proxies
-
-# Function to get game servers with proxy and retry logic
-async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25, proxies=None):
+# Function to get game servers with retry logic
+async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25): 
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
-    
     delay = initial_delay
     original_retries = retries  # Store the original retry count
     
-    while retries > 0:
+    while retries > 0:  # Use a while loop to control retries
         try:
-            # Choose a random proxy from the list if proxies are provided
-            if proxies:
-                proxy = random.choice(proxies)
-                proxy_dict = {
-                    "http": f"http://{proxy}",
-                    "https": f"http://{proxy}"
-                }
-                print(f"Using proxy: {proxy}")
-            else:
-                proxy_dict = None
-
-            # Make the request using the proxy
-            response = requests.get(url, proxies=proxy_dict)
-            
+            response = requests.get(url)
             if response.status_code == 429:  # Rate limit error
-                print(f"Rate limit hit. Retrying after {delay} seconds with proxy {proxy}...")
+                print(f"Rate limit hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
                 retries -= 1  # Decrement retry count
                 continue
 
-            response.raise_for_status()  # Raise exception for 4xx/5xx responses
+            response.raise_for_status()
             return response.json()
-        
+            
         except requests.RequestException as e:
-            print(f"Request failed: {e}. Retrying with a different proxy...")
+            print(f"Failed: {e}")
             retries -= 1  # Decrement retry count
-
-    retries = original_retries  # Reset retries to original count after success
+            
+    # Reset retries to original count after success
+    retries = original_retries
     return None
 
 # Function to batch fetch thumbnails with retry logic
