@@ -156,13 +156,15 @@ async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25):
 async def search_player(interaction, place_id, username, embed):
     user_id = get_user_id(username)
     if not user_id:
-        embed.add_field(name="Error", value="User not found", inline=False)
+        embed.clear_fields()
+        embed.add_field(name="Error", value="User Does Not Exist", inline=False)
         await interaction.edit_original_response(embed=embed)
         return None
 
     target_thumbnail_url = await get_avatar_thumbnail(user_id)
     if not target_thumbnail_url:
-        embed.add_field(name="Error", value="Failed to get avatar thumbnail", inline=False)
+        embed.clear_fields()
+        embed.add_field(name="Error", value="Server Issues Run Command again", inline=False)
         await interaction.edit_original_response(embed=embed)
         return None
 
@@ -208,7 +210,7 @@ async def search_player(interaction, place_id, username, embed):
             all_player_tokens = all_player_tokens[chunk_size:]
             thumbnails = await fetch_thumbnails(chunk)
             if not thumbnails:
-                embed.add_field(name="Error", value="Failed to fetch thumbnails", inline=False)
+                embed.add_field(name="Error", value="Thumbnail Rate Limit is A Bitch", inline=False)
                 await interaction.edit_original_response(embed=embed)
                 return
 
