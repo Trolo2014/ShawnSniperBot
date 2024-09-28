@@ -361,57 +361,57 @@ class SnipeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-@discord.app_commands.command(name="snipe", description="Search for a player in a specific game")
-@discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID", method="Search method: RealTime or LoadServersScan")
-@commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: int, method: str):
-    # Check if there is an active job
-    if any(active_jobs.values()):
-        for user_id in active_jobs:
-            if user_id != interaction.user.id:
-                user = self.bot.get_user(user_id)
-                if user:
-                    embed = discord.Embed(color=0xFFD700)  # Gold color
-                    embed.add_field(name="Sniper", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
-                    await interaction.response.send_message(embed=embed, ephemeral=True)
-                    return
+  @discord.app_commands.command(name="snipe", description="Search for a player in a specific game")
+    @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID", method="Search method: RealTime or LoadServersScan")
+    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
+    async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: int, method: str):
+        # Check if there is an active job
+        if any(active_jobs.values()):
+            for user_id in active_jobs:
+                if user_id != interaction.user.id:
+                    user = self.bot.get_user(user_id)
+                    if user:
+                        embed = discord.Embed(color=0xFFD700)  # Gold color
+                        embed.add_field(name="Sniper", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
+                        await interaction.response.send_message(embed=embed, ephemeral=True)
+                        return
 
-    active_jobs[interaction.user.id] = True
-    await interaction.response.defer()  # Defer the response to avoid timeout
+        active_jobs[interaction.user.id] = True
+        await interaction.response.defer()  # Defer the response to avoid timeout
 
-    # Initial embed with progress information
-    embed = discord.Embed(color=0xFFD700)  # Gold color
-    embed.add_field(name="Fetching Servers", value="Total Servers Checked: 0", inline=False)
-    embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
-    await interaction.followup.send(embed=embed, ephemeral=True)
+        # Initial embed with progress information
+        embed = discord.Embed(color=0xFFD700)  # Gold color
+        embed.add_field(name="Fetching Servers", value="Total Servers Checked: 0", inline=False)
+        embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
-    # Use the selected method
-    if method.lower() == "realtime":
-        job_id = await search_player(interaction, place_id, username, embed)
-    elif method.lower() == "loadserversscan":
-        job_id = await load_all_servers_and_search_player(interaction, place_id, username, embed)
-    else:
-        embed.clear_fields()
-        embed.add_field(name="Invalid Method", value="Please choose either 'RealTime' or 'LoadServersScan'.", inline=False)
+        # Use the selected method
+        if method.lower() == "realtime":
+            job_id = await search_player(interaction, place_id, username, embed)
+        elif method.lower() == "loadserversscan":
+            job_id = await load_all_servers_and_search_player(interaction, place_id, username, embed)
+        else:
+            embed.clear_fields()
+            embed.add_field(name="Invalid Method", value="Please choose either 'RealTime' or 'LoadServersScan'.", inline=False)
+            await interaction.edit_original_response(embed=embed)
+            active_jobs[interaction.user.id] = False
+            return
+
+        # Process the result
+        if job_id:
+            # Player found case
+            embed.clear_fields()
+            embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
+            embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
+            embed.add_field(name="Instructions For DeepLink", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
+            embed.add_field(name="Server ID For Exploit", value=f"{job_id}", inline=False)
+        else:
+            # Player not found case
+            embed.clear_fields()
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
+
         await interaction.edit_original_response(embed=embed)
         active_jobs[interaction.user.id] = False
-        return
-
-    # Process the result
-    if job_id:
-        # Player found case
-        embed.clear_fields()
-        embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
-        embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
-        embed.add_field(name="Instructions For DeepLink", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
-        embed.add_field(name="Server ID For Exploit", value=f"{job_id}", inline=False)
-    else:
-        # Player not found case
-        embed.clear_fields()
-        embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
-
-    await interaction.edit_original_response(embed=embed)
-    active_jobs[interaction.user.id] = False
 
 
     @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 10 minutes")
