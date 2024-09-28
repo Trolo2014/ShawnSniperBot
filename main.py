@@ -364,7 +364,7 @@ class SnipeCog(commands.Cog):
 @discord.app_commands.command(name="snipe", description="Search for a player in a specific game")
 @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID", method="Search method: RealTime or LoadServersScan")
 @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: str, method: str):
+async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: int, method: str):
     # Check if there is an active job
     if any(active_jobs.values()):
         for user_id in active_jobs:
