@@ -75,11 +75,11 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
             if 'data' in data and len(data['data']) > 0:
                 return data['data'][0]['imageUrl']
             return None
-            
+
         except requests.RequestException as e:
             print(f"Failed: {e}")
             retries -= 1  # Decrement retry count
-            
+
     # Reset retries to original count after success
     retries = original_retries
     return None
@@ -87,13 +87,13 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
 
 
 # Function to get game servers with retry logic
-async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25): 
+async def get_servers(place_id, cursor=None, retries=120, initial_delay=1): 
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
     delay = initial_delay
     original_retries = retries  # Store the original retry count
-    
+
     while retries > 0:  # Use a while loop to control retries
         try:
             response = requests.get(url)
@@ -105,11 +105,11 @@ async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25):
 
             response.raise_for_status()
             return response.json()
-            
+
         except requests.RequestException as e:
             print(f"Failed: {e}")
             retries -= 1  # Decrement retry count
-            
+
     # Reset retries to original count after success
     retries = original_retries
     return None
@@ -134,7 +134,7 @@ async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25):
     while retries > 0:  # Use a while loop to control retries
         try:
             response = requests.post(url, json=body)
-            
+
             # Handle rate limit
             if response.status_code == 429:
                 print(f"Rate limit Fetching Thumbnails hit. Retrying after {delay} seconds...")
@@ -144,11 +144,11 @@ async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25):
 
             response.raise_for_status()  # Raise error for other non-200 status codes
             return response.json()
-        
+
         except requests.RequestException as e:
             print(f"Failed: {e}")
             retries -= 1  # Decrement retry count
-            
+
     # Reset retries to original count after success
     retries = original_retries
     return None
@@ -361,8 +361,20 @@ class SnipeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-  @discord.app_commands.command(name="snipe", description="Search for a player in a specific game")
+    # Cog for searching player in a specific game
+    class SnipeCog(commands.Cog):
+        def __init__(self, bot):
+            self.bot = bot
+class SnipeCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @discord.app_commands.command(name="snipe", description="Search for a player in a specific game")
     @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID", method="Search method: RealTime or LoadServersScan")
+    @discord.app_commands.choices(method=[
+        discord.app_commands.Choice(name="RealTime", value="realtime"),
+        discord.app_commands.Choice(name="LoadServersScan", value="loadserversscan"),
+    ])
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
     async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: int, method: str):
         # Check if there is an active job
@@ -386,9 +398,9 @@ class SnipeCog(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
         # Use the selected method
-        if method.lower() == "realtime":
+        if method == "realtime":
             job_id = await search_player(interaction, place_id, username, embed)
-        elif method.lower() == "loadserversscan":
+        elif method == "loadserversscan":
             job_id = await load_all_servers_and_search_player(interaction, place_id, username, embed)
         else:
             embed.clear_fields()
@@ -412,7 +424,6 @@ class SnipeCog(commands.Cog):
 
         await interaction.edit_original_response(embed=embed)
         active_jobs[interaction.user.id] = False
-
 
     @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 10 minutes")
     @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
@@ -452,23 +463,24 @@ class SnipeCog(commands.Cog):
                 embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
                 embed.add_field(name="Instructions For DeepLink", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
                 embed.add_field(name="Server ID For Exploit", value=f"{job_id}", inline=False)
+                await interaction.edit_original_response(embed=embed)
                 found = True
                 break  # Exit loop if player is found
 
-            # Update embed to show cooldown status
-            embed.clear_fields()
-            embed.add_field(name="Cooldown", value="Waiting 20 seconds before retrying...", inline=False)
+            # Update embed with progress
+            embed.set_field_at(1, name="Total Servers Checked", value=str(int(embed.fields[1].value) + 1), inline=False)
+            embed.set_field_at(2, name="Matching Players ID With Target", value=str(int(embed.fields[2].value) + 1), inline=False)
             await interaction.edit_original_response(embed=embed)
 
-            await asyncio.sleep(20)  # Wait 20 seconds before checking again
+            await asyncio.sleep(1)  # Optional: sleep to reduce API calls
 
         if not found:
-            # Player not found after 10 minutes
             embed.clear_fields()
-            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} after 10 minutes", value="", inline=False)
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
+            await interaction.edit_original_response(embed=embed)
 
-        await interaction.edit_original_response(embed=embed)
         active_jobs[interaction.user.id] = False
+
 
 # Register the cog and the command tree
 async def setup(bot):
