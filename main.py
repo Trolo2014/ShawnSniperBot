@@ -471,7 +471,7 @@ class SnipeCog(commands.Cog):
 
         if not found:
             embed.clear_fields()
-            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="in duration of 10 Minutes", inline=False)
             await interaction.edit_original_response(embed=embed)
             active_jobs[interaction.user.id] = False
 
