@@ -437,7 +437,7 @@ async def snipet_command(self, interaction: discord.Interaction, username: str, 
 
     # Initial embed with progress information
     embed = discord.Embed(color=0xFFD700)  # Gold color
-    embed.add_field(name="Status", value="Starting Search", inline=False)
+    embed.add_field(name="Status", value="Starting to search...", inline=False)
     embed.add_field(name="Total Servers Checked", value="0", inline=False)
     embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
     embed.add_field(name="Cooldown Status", value="Not in Cooldown", inline=False)  # Add cooldown status field
@@ -472,11 +472,11 @@ async def snipet_command(self, interaction: discord.Interaction, username: str, 
         await interaction.edit_original_response(embed=embed)
 
         # Enter cooldown phase
-        embed.set_field_at(3, name="Cooldown Status", value="In Cooldown (15 seconds)", inline=False)  # Update to show cooldown
+        embed.set_field_at(3, name="Cooldown Status", value="In Cooldown (20 seconds)", inline=False)  # Update to show cooldown
         await interaction.edit_original_response(embed=embed)
 
         # Sleep for 20 seconds (cooldown)
-        await asyncio.sleep(15)
+        await asyncio.sleep(20)
 
         # Reset cooldown status for the next loop iteration
         embed.set_field_at(3, name="Cooldown Status", value="Not in Cooldown", inline=False)  # Reset cooldown status
@@ -488,6 +488,7 @@ async def snipet_command(self, interaction: discord.Interaction, username: str, 
         await interaction.edit_original_response(embed=embed)
     
     active_jobs[interaction.user.id] = False
+
 
 
 
