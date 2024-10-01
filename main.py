@@ -437,7 +437,7 @@ async def snipet_command(self, interaction: discord.Interaction, username: str, 
 
     # Initial embed with progress information
     embed = discord.Embed(color=0xFFD700)  # Gold color
-    embed.add_field(name="Status", value=f"Starting Search For {username}", inline=False)
+    embed.add_field(name="Status", value="Starting Search", inline=False)
     embed.add_field(name="Total Servers Checked", value="0", inline=False)
     embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
     embed.add_field(name="Cooldown Status", value="Not in Cooldown", inline=False)  # Add cooldown status field
