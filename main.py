@@ -361,14 +361,6 @@ class SnipeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # Cog for searching player in a specific game
-    class SnipeCog(commands.Cog):
-        def __init__(self, bot):
-            self.bot = bot
-class SnipeCog(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
     @discord.app_commands.command(name="snipe", description="Search for a player in a specific game")
     @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID", method="Search method: RealTime or LoadServersScan")
     @discord.app_commands.choices(method=[
@@ -471,15 +463,18 @@ class SnipeCog(commands.Cog):
             embed.set_field_at(1, name="Total Servers Checked", value=str(int(embed.fields[1].value) + 1), inline=False)
             embed.set_field_at(2, name="Matching Players ID With Target", value=str(int(embed.fields[2].value) + 1), inline=False)
             await interaction.edit_original_response(embed=embed)
-
-            await asyncio.sleep(1)  # Optional: sleep to reduce API calls
+           
+            embed.clear_fields()
+            embed.set_field_at(1, name="Total Servers Checked", value=str(int(embed.fields[1].value) + 1), inline=False)
+            embed.set_field_at(2, name="Matching Players ID With Target", value=str(int(embed.fields[2].value) + 1), inline=False)
+            await interaction.edit_original_response(embed=embed)
+            await asyncio.sleep(20)  # Optional: sleep to reduce API calls
 
         if not found:
             embed.clear_fields()
             embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
             await interaction.edit_original_response(embed=embed)
-
-        active_jobs[interaction.user.id] = False
+            active_jobs[interaction.user.id] = False
 
 
 # Register the cog and the command tree
