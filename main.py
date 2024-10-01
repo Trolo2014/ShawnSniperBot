@@ -465,8 +465,7 @@ class SnipeCog(commands.Cog):
             await interaction.edit_original_response(embed=embed)
            
             embed.clear_fields()
-            embed.set_field_at(1, name="Total Servers Checked", value=str(int(embed.fields[1].value) + 1), inline=False)
-            embed.set_field_at(2, name="Matching Players ID With Target", value=str(int(embed.fields[2].value) + 1), inline=False)
+            embed.add_field(name="20 Seconds Cooldown....", value="Rate Limit Is A Bitch", inline=False)
             await interaction.edit_original_response(embed=embed)
             await asyncio.sleep(20)  # Optional: sleep to reduce API calls
 
