@@ -409,7 +409,7 @@ class SnipeCog(commands.Cog):
             embed.add_field(name="DeepLink BloxStrap", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
             embed.add_field(name="Instructions For DeepLink BloxStrap", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL Then Enter", inline=False)
             embed.add_field(name="DeepLink Roblox Console", value=f'Roblox.GameLauncher.joinGameInstance({place_id},"{job_id}")', inline=False)
-            embed.add_field(name="Instructions For DeepLink Roblox Console", value="Enter https://www.roblox.com/home Turn Inspect Element then Select Console And Paste It In Then Enter", inline=False)
+            embed.add_field(name="Instructions For DeepLink Roblox Console", value="Copy DeepLink, Enter https://www.roblox.com/home Turn Inspect Element then Select Console And Paste It In Then Enter", inline=False)
             embed.add_field(name="Job ID", value=f"{job_id}", inline=False)
         else:
             # Player not found case
@@ -461,7 +461,7 @@ class SnipeCog(commands.Cog):
                 embed.add_field(name="DeepLink BloxStrap", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
                 embed.add_field(name="Instructions For DeepLink BloxStrap", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL Then Enter", inline=False)
                 embed.add_field(name="DeepLink Roblox Console", value=f'Roblox.GameLauncher.joinGameInstance({place_id},"{job_id}")', inline=False)
-                embed.add_field(name="Instructions For DeepLink Roblox Console", value="Enter https://www.roblox.com/home Turn Inspect Element then Select Console And Paste It In Then Enter", inline=False)
+                embed.add_field(name="Instructions For DeepLink Roblox Console", value="Copy DeepLink, Enter https://www.roblox.com/home Turn Inspect Element then Select Console And Paste It In Then Enter", inline=False)
                 embed.add_field(name="Job ID", value=f"{job_id}", inline=False)
                 found = True
                 break  # Exit loop if player is found
