@@ -417,79 +417,61 @@ class SnipeCog(commands.Cog):
         await interaction.edit_original_response(embed=embed)
         active_jobs[interaction.user.id] = False
 
-@discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 10 minutes")
-@discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
-@commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
-    # Check if there is an active job
-    if any(active_jobs.values()):
-        for user_id in active_jobs:
-            if user_id != interaction.user.id:
-                user = self.bot.get_user(user_id)
-                if user:
-                    embed = discord.Embed(color=0xFFD700)  # Gold color
-                    embed.add_field(name="Active Job", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
-                    await interaction.response.send_message(embed=embed, ephemeral=True)
-                    return
+    @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 10 minutes")
+    @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
+    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
+    async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
+        # Check if there is an active job
+        if any(active_jobs.values()):
+            for user_id in active_jobs:
+                if user_id != interaction.user.id:
+                    user = self.bot.get_user(user_id)
+                    if user:
+                        embed = discord.Embed(color=0xFFD700)  # Gold color
+                        embed.add_field(name="Active Job", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
+                        await interaction.response.send_message(embed=embed, ephemeral=True)
+                        return
 
-    active_jobs[interaction.user.id] = True
-    await interaction.response.defer()  # Defer the response to avoid timeout
+        active_jobs[interaction.user.id] = True
+        await interaction.response.defer()  # Defer the response to avoid timeout
 
-    # Initial embed with progress information
-    embed = discord.Embed(color=0xFFD700)  # Gold color
-    embed.add_field(name="Status", value="Starting to search...", inline=False)
-    embed.add_field(name="Total Servers Checked", value="0", inline=False)
-    embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
-    embed.add_field(name="Cooldown Status", value="Not in Cooldown", inline=False)  # Add cooldown status field
-    await interaction.followup.send(embed=embed, ephemeral=True)
+        # Initial embed with progress information
+        embed = discord.Embed(color=0xFFD700)  # Gold color
+        embed.add_field(name="Status", value="Starting to search...", inline=False)
+        embed.add_field(name="Total Servers Checked", value="0", inline=False)
+        embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
-    end_time = datetime.now() + timedelta(minutes=10)
-    found = False
-    servers_checked = 0
-    matching_players = 0
+        end_time = datetime.now() + timedelta(minutes=10)
+        found = False
 
-    while datetime.now() < end_time:
-        # Perform the scan
-        job_id = await search_player(interaction, place_id, username, embed)
+        while datetime.now() < end_time:
+            job_id = await search_player(interaction, place_id, username, embed)
 
-        if job_id:
-            # Player found case
-            embed.clear_fields()
-            embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
-            embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
-            embed.add_field(name="Instructions For DeepLink", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
-            embed.add_field(name="Server ID For Exploit", value=f"{job_id}", inline=False)
+            if job_id:
+                # Player found case
+                embed.clear_fields()
+                embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
+                embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
+                embed.add_field(name="Instructions For DeepLink", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
+                embed.add_field(name="Server ID For Exploit", value=f"{job_id}", inline=False)
+                await interaction.edit_original_response(embed=embed)
+                found = True
+                break  # Exit loop if player is found
+
+            # Update embed with progress
+            embed.set_field_at(1, name="Total Servers Checked", value=str(int(embed.fields[1].value) + 1), inline=False)
+            embed.set_field_at(2, name="Matching Players ID With Target", value=str(int(embed.fields[2].value) + 1), inline=False)
             await interaction.edit_original_response(embed=embed)
-            found = True
-            break  # Exit loop if player is found
 
-        # Update progress
-        servers_checked += 1
-        matching_players += 1  # You can adjust how matching players count if it should only increment when relevant
-        embed.set_field_at(1, name="Total Servers Checked", value=str(servers_checked), inline=False)
-        embed.set_field_at(2, name="Matching Players ID With Target", value=str(matching_players), inline=False)
-        embed.set_field_at(3, name="Cooldown Status", value="Not in Cooldown", inline=False)  # Ensure cooldown is marked as inactive
-        await interaction.edit_original_response(embed=embed)
+            await asyncio.sleep(20)  # Optional: sleep to reduce API calls
 
-        # Enter cooldown phase
-        embed.set_field_at(3, name="Cooldown Status", value="In Cooldown (20 seconds)", inline=False)  # Update to show cooldown
-        await interaction.edit_original_response(embed=embed)
+        if not found:
+            embed.clear_fields()
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
+            await interaction.edit_original_response(embed=embed)
 
-        # Sleep for 20 seconds (cooldown)
-        await asyncio.sleep(20)
-
-        # Reset cooldown status for the next loop iteration
-        embed.set_field_at(3, name="Cooldown Status", value="Not in Cooldown", inline=False)  # Reset cooldown status
-        await interaction.edit_original_response(embed=embed)
-
-    if not found:
-        embed.clear_fields()
-        embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="in duration of 10 Minutes", inline=False)
-        await interaction.edit_original_response(embed=embed)
-    
-    active_jobs[interaction.user.id] = False
-
-
+        active_jobs[interaction.user.id] = False
 
 
 # Register the cog and the command tree
