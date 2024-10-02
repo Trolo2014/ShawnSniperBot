@@ -406,9 +406,11 @@ class SnipeCog(commands.Cog):
             # Player found case
             embed.clear_fields()
             embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
-            embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
-            embed.add_field(name="Instructions For DeepLink", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
-            embed.add_field(name="Server ID For Exploit", value=f"{job_id}", inline=False)
+            embed.add_field(name="DeepLink BloxStrap", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
+            embed.add_field(name="Instructions For DeepLink BloxStrap", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL Then Enter", inline=False)
+            embed.add_field(name="DeepLink Roblox Console", value=f'Roblox.GameLauncher.joinGameInstance({place_id},"{job_id}")', inline=False)
+            embed.add_field(name="Instructions For DeepLink Roblox Console", value="Enter https://www.roblox.com/home Turn Inspect Element then Select Console And Paste It In Then Enter", inline=False)
+            embed.add_field(name="Job ID", value=f"{job_id}", inline=False)
         else:
             # Player not found case
             embed.clear_fields()
@@ -456,8 +458,11 @@ class SnipeCog(commands.Cog):
                 # Player found case
                 embed.clear_fields()
                 embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
-                embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
-                embed.add_field(name="Instructions:", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
+                embed.add_field(name="DeepLink BloxStrap", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
+                embed.add_field(name="Instructions For DeepLink BloxStrap", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL Then Enter", inline=False)
+                embed.add_field(name="DeepLink Roblox Console", value=f'Roblox.GameLauncher.joinGameInstance({place_id},"{job_id}")', inline=False)
+                embed.add_field(name="Instructions For DeepLink Roblox Console", value="Enter https://www.roblox.com/home Turn Inspect Element then Select Console And Paste It In Then Enter", inline=False)
+                embed.add_field(name="Job ID", value=f"{job_id}", inline=False)
                 found = True
                 break  # Exit loop if player is found
 
