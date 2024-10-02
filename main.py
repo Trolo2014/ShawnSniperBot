@@ -417,7 +417,11 @@ class SnipeCog(commands.Cog):
         await interaction.edit_original_response(embed=embed)
         active_jobs[interaction.user.id] = False
 
-    @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 10 minutes")
+
+
+
+
+    @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 15 minutes")
     @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
     @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
     async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
@@ -453,24 +457,23 @@ class SnipeCog(commands.Cog):
                 embed.clear_fields()
                 embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
                 embed.add_field(name="DeepLink", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
-                embed.add_field(name="Instructions For DeepLink", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
-                embed.add_field(name="Server ID For Exploit", value=f"{job_id}", inline=False)
-                await interaction.edit_original_response(embed=embed)
+                embed.add_field(name="Instructions:", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL", inline=False)
                 found = True
                 break  # Exit loop if player is found
 
-            # Update embed with progress
-            embed.set_field_at(1, name="Total Servers Checked", value=str(int(embed.fields[1].value) + 1), inline=False)
-            embed.set_field_at(2, name="Matching Players ID With Target", value=str(int(embed.fields[2].value) + 1), inline=False)
+            # Update embed to show cooldown status
+            embed.clear_fields()
+            embed.add_field(name="Cooldown", value="Waiting 20 seconds before retrying...", inline=False)
             await interaction.edit_original_response(embed=embed)
 
-            await asyncio.sleep(20)  # Optional: sleep to reduce API calls
+            await asyncio.sleep(20)  # Wait 20 seconds before checking again
 
         if not found:
+            # Player not found after 15 minutes
             embed.clear_fields()
-            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
-            await interaction.edit_original_response(embed=embed)
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} after 10 minutes", value="", inline=False)
 
+        await interaction.edit_original_response(embed=embed)
         active_jobs[interaction.user.id] = False
 
 
