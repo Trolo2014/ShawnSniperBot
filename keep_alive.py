@@ -10,7 +10,7 @@ def get_user_id(username):
     url = "https://users.roblox.com/v1/usernames/users"
     params = {"usernames": [username]}
     try:
-        response = requests.post(url, json=params)
+        response = requests.post(url, json=params, timeout=10)  # Set a timeout for requests
         response.raise_for_status()
         data = response.json()
         if data and 'data' in data and len(data['data']) > 0:
@@ -27,7 +27,7 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
     delay = initial_delay
     while retries > 0: 
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=10)  # Set a timeout for requests
             if response.status_code == 429:  
                 print(f"Rate limit hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
@@ -41,7 +41,7 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
             return None
 
         except requests.RequestException as e:
-            print(f"Failed: {e}")
+            print(f"Failed to fetch thumbnail: {e}")
             retries -= 1  
 
     return None
@@ -55,9 +55,9 @@ async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
 
     while retries > 0:  
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=10)  # Set a timeout for requests
             if response.status_code == 429:  
-                print(f"Rate limit Fetching Servers hit. Retrying after {delay} seconds...")
+                print(f"Rate limit fetching servers hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
                 retries -= 1  
                 continue
@@ -66,7 +66,7 @@ async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
             return response.json()
 
         except requests.RequestException as e:
-            print(f"Failed: {e}")
+            print(f"Failed to fetch servers: {e}")
             retries -= 1  
 
     return None
@@ -89,10 +89,10 @@ async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25):
 
     while retries > 0:  
         try:
-            response = requests.post(url, json=body)
+            response = requests.post(url, json=body, timeout=10)  # Set a timeout for requests
 
             if response.status_code == 429:
-                print(f"Rate limit Fetching Thumbnails hit. Retrying after {delay} seconds...")
+                print(f"Rate limit fetching thumbnails hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
                 retries -= 1  
                 continue  
@@ -101,7 +101,7 @@ async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25):
             return response.json()
 
         except requests.RequestException as e:
-            print(f"Failed: {e}")
+            print(f"Failed to fetch thumbnails: {e}")
             retries -= 1  
 
     return None
@@ -211,3 +211,4 @@ def keep_alive():
 
 if __name__ == '__main__':
     threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8080)).start()  # Start the Flask app
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8081)).start()  # Start the keep-alive endpoint
