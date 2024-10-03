@@ -211,4 +211,4 @@ def keep_alive():
 
 if __name__ == '__main__':
     threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8080)).start()  # Start the Flask app
-    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8081)).start()  # Start the keep-alive endpoint
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8080)).start()  # Start the keep-alive endpoint
