@@ -22,16 +22,16 @@ def get_user_id(username):
         return None
 
 # Function to get avatar thumbnail URL with retry logic
-async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25): 
+async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
     url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
     delay = initial_delay
-    while retries > 0: 
+    while retries > 0:
         try:
             response = requests.get(url, timeout=10)  # Set a timeout for requests
-            if response.status_code == 429:  
+            if response.status_code == 429:
                 print(f"Rate limit hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-                retries -= 1  
+                retries -= 1
                 continue
 
             response.raise_for_status()
@@ -42,24 +42,24 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
 
         except requests.RequestException as e:
             print(f"Failed to fetch thumbnail: {e}")
-            retries -= 1  
+            retries -= 1
 
     return None
 
 # Function to get game servers with retry logic
-async def get_servers(place_id, cursor=None, retries=120, initial_delay=1): 
+async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
     delay = initial_delay
 
-    while retries > 0:  
+    while retries > 0:
         try:
             response = requests.get(url, timeout=10)  # Set a timeout for requests
-            if response.status_code == 429:  
+            if response.status_code == 429:
                 print(f"Rate limit fetching servers hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-                retries -= 1  
+                retries -= 1
                 continue
 
             response.raise_for_status()
@@ -67,12 +67,12 @@ async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
 
         except requests.RequestException as e:
             print(f"Failed to fetch servers: {e}")
-            retries -= 1  
+            retries -= 1
 
     return None
 
 # Function to fetch thumbnails with retry logic
-async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25): 
+async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25):
     body = [
         {
             "requestId": f"0:{token}:AvatarHeadshot:150x150:png:regular",
@@ -87,22 +87,22 @@ async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25):
     url = "https://thumbnails.roblox.com/v1/batch"
     delay = initial_delay
 
-    while retries > 0:  
+    while retries > 0:
         try:
             response = requests.post(url, json=body, timeout=10)  # Set a timeout for requests
 
             if response.status_code == 429:
                 print(f"Rate limit fetching thumbnails hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-                retries -= 1  
-                continue  
+                retries -= 1
+                continue
 
-            response.raise_for_status()  
+            response.raise_for_status()
             return response.json()
 
         except requests.RequestException as e:
             print(f"Failed to fetch thumbnails: {e}")
-            retries -= 1  
+            retries -= 1
 
     return None
 
@@ -192,15 +192,9 @@ def home():
         username = request.form.get('username')
         place_id = request.form.get('placeid')
 
-        # Start the search in a separate thread to avoid blocking
-        def run_search():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(search_player(username, place_id))
-            return result
-
-        search_result = run_search()
-        return render_template_string(HTML_TEMPLATE, search_result=search_result)
+        # Run the search function asynchronously and wait for the result
+        result = asyncio.run(search_player(username, place_id))
+        return render_template_string(HTML_TEMPLATE, search_result=result)
 
     return render_template_string(HTML_TEMPLATE, search_result=None)
 
@@ -210,5 +204,4 @@ def keep_alive():
     return "I'm alive!"
 
 if __name__ == '__main__':
-    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8080)).start()  # Start the Flask app
-    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8081)).start()  # Start the keep-alive endpoint
+    app.run(host="0.0.0.0", port=8080)  # Start the Flask app
