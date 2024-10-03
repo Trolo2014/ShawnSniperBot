@@ -1,16 +1,9 @@
-from flask import Flask, request, render_template_string
-import discord
-from discord.ext import commands
+from flask import Flask, request, jsonify, render_template
+import threading
 import requests
 import asyncio
 
-# Initialize Flask app
 app = Flask(__name__)
-
-# Discord bot setup
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Function to get user ID from username
 def get_user_id(username):
@@ -28,73 +21,164 @@ def get_user_id(username):
         print(f"Error getting user ID: {e}")
         return None
 
-# Function to fetch player thumbnails
-async def fetch_player_thumbnail(user_id):
-    url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size=150x150&format=Png"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        if data and 'data' in data and len(data['data']) > 0:
-            thumbnail_url = data['data'][0]['imageUrl']
-            return thumbnail_url
-        return None
-    except requests.RequestException as e:
-        print(f"Error fetching thumbnail: {e}")
-        return None
+# Function to get avatar thumbnail URL with retry logic
+async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25): 
+    url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
+    delay = initial_delay
+    original_retries = retries  # Store the original retry count
+    while retries > 0:  # Use a while loop to control retries
+        try:
+            response = requests.get(url)
+            if response.status_code == 429:  # Rate limit error
+                print(f"Rate limit hit. Retrying after {delay} seconds...")
+                await asyncio.sleep(delay)
+                retries -= 1  # Decrement retry count
+                continue
 
-# Function to search for a player
-async def search_player(username):
+            response.raise_for_status()
+            data = response.json()
+            if 'data' in data and len(data['data']) > 0:
+                return data['data'][0]['imageUrl']
+            return None
+
+        except requests.RequestException as e:
+            print(f"Failed: {e}")
+            retries -= 1  # Decrement retry count
+
+    return None
+
+# Function to get game servers with retry logic
+async def get_servers(place_id, cursor=None, retries=120, initial_delay=1): 
+    url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
+    if cursor:
+        url += f"&cursor={cursor}"
+    delay = initial_delay
+    original_retries = retries  # Store the original retry count
+
+    while retries > 0:  # Use a while loop to control retries
+        try:
+            response = requests.get(url)
+            if response.status_code == 429:  # Rate limit error
+                print(f"Rate limit Fetching Servers hit. Retrying after {delay} seconds...")
+                await asyncio.sleep(delay)
+                retries -= 1  # Decrement retry count
+                continue
+
+            response.raise_for_status()
+            return response.json()
+
+        except requests.RequestException as e:
+            print(f"Failed: {e}")
+            retries -= 1  # Decrement retry count
+
+    return None
+
+# Function to search for player
+async def search_player(interaction, place_id, username, embed):
     user_id = get_user_id(username)
     if not user_id:
-        return None, None
+        embed.clear_fields()
+        embed.add_field(name="Error", value="User Does Not Exist", inline=False)
+        await interaction.edit_original_response(embed=embed)
+        return None
 
-    thumbnail_url = await fetch_player_thumbnail(user_id)
-    return user_id, thumbnail_url
+    target_thumbnail_url = await get_avatar_thumbnail(user_id)
+    if not target_thumbnail_url:
+        embed.clear_fields()
+        embed.add_field(name="Error", value="Server Issues. Run Command again.", inline=False)
+        await interaction.edit_original_response(embed=embed)
+        return None
 
-# HTML template as a string
-html_template = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox Player Search</title>
-</head>
-<body>
-    <h1>Search for a Roblox Player</h1>
-    <form method="POST">
-        <label for="username">Roblox Username:</label>
-        <input type="text" id="username" name="username" required>
-        <br>
-        <input type="submit" value="Search">
-    </form>
+    cursor = None
+    all_player_tokens = []
+    server_data = []
+    total_servers = 0
+    total_players_not_matched = 0
 
-    {% if user_id %}
-        <h2>Player found!</h2>
-        <p>User ID: {{ user_id }}</p>
-        <img src="{{ thumbnail_url }}" alt="Player Thumbnail">
-    {% elif result %}
-        <h2>{{ result }}</h2>
-    {% endif %}
-</body>
-</html>
-"""
+    while True:
+        fetch_count = 0
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        username = request.form.get('username')
+        # Fetch servers up to 3 times before processing player tokens
+        while fetch_count < 3:
+            servers = await get_servers(place_id, cursor)
+            if not servers:
+                embed.add_field(name="Error", value="Failed to get servers after retries", inline=False)
+                await interaction.edit_original_response(embed=embed)
+                return None
 
-        if username:
-            # Call the search_player function
-            user_id, thumbnail_url = asyncio.run(search_player(username))
-            if user_id:
-                return render_template_string(html_template, user_id=user_id, thumbnail_url=thumbnail_url)
-            else:
-                return render_template_string(html_template, result=f"Player {username} not found.")
+            cursor = servers.get("nextPageCursor")
+            total_servers += len(servers.get("data", []))
 
-    return render_template_string(html_template, result=None)
+            for server in servers.get("data", []):
+                tokens = server.get("playerTokens", [])
+                all_player_tokens.extend(tokens)
+                total_players_not_matched += len(tokens)
+                server_data.extend([(token, server) for token in tokens])
 
-if __name__ == '__main__':
+            # Update the embed with progress
+            embed.clear_fields()
+            embed.add_field(name="Fetching Servers", value=f"Total Servers Checked: {total_servers}", inline=False)
+            embed.add_field(name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
+            await interaction.edit_original_response(embed=embed)
+
+            # Increment fetch count
+            fetch_count += 1
+
+        # Process chunks of player tokens
+        chunk_size = 100
+        while all_player_tokens:
+            chunk = all_player_tokens[:chunk_size]
+            all_player_tokens = all_player_tokens[chunk_size:]
+            thumbnails = await fetch_thumbnails(chunk)
+            if not thumbnails:
+                embed.add_field(name="Error", value="Thumbnail Rate Limit Exceeded", inline=False)
+                await interaction.edit_original_response(embed=embed)
+                return
+
+            for thumb in thumbnails.get("data", []):
+                if thumb["imageUrl"] == target_thumbnail_url:
+                    for token, server in server_data:
+                        if token == thumb["requestId"].split(":")[1]:
+                            return server.get("id")
+
+            # Update the total players not matched field
+            total_players_not_matched -= len(chunk)
+            embed.set_field_at(1, name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
+            await interaction.edit_original_response(embed=embed)
+
+        # If cursor is None, we have exhausted the servers and should exit
+        if cursor is None:
+            break
+
+    return None
+
+# Function to handle the sniper logic
+async def snipe_logic(username, place_id):
+    embed = ...  # Initialize your embed object here (this will depend on your existing code context)
+    interaction = ...  # Initialize your interaction object here (same as above)
+    await search_player(interaction, place_id, username, embed)
+
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+@app.route('/search', methods=['POST'])
+def search():
+    username = request.form.get('username')
+    place_id = request.form.get('place_id')
+
+    # Use RealTime scan as requested
+    if username and place_id:
+        # Call the snipe logic with username and place_id
+        asyncio.run(snipe_logic(username, place_id))  # This will need to be adjusted based on your integration
+        return jsonify({"status": "Searching..."})  # Adjust as necessary
+    else:
+        return jsonify({"error": "Please provide both username and place ID."}), 400
+
+# Function to keep the app alive
+def keep_alive():
     app.run(host='0.0.0.0', port=8080)
+
+# Run the app in a separate thread to keep it alive
+if __name__ == '__main__':
+    threading.Thread(target=keep_alive).start()
