@@ -23,20 +23,22 @@ HTML_TEMPLATE = """
             align-items: center;
             justify-content: center;
             height: 100vh;
-            background-color: #f4f4f4;
+            background-color: #000; /* Change to black */
+            color: #fff; /* Change text color to white */
         }
         h1 {
-            color: #333;
+            color: #fff; /* Change heading color to white */
         }
         form {
-            background: #fff;
+            background: #333; /* Darker background for form */
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
         }
         label {
             display: block;
             margin: 10px 0 5px;
+            color: #fff; /* Change label color to white */
         }
         input {
             width: 100%;
@@ -75,9 +77,19 @@ HTML_TEMPLATE = """
     {% if search_result %}
         <div class="result">
             <h2>Search Result:</h2>
-            <p>{{ search_result }}</p>
+            {% if join_button %}
+                <button onclick="joinGame('{{ place_id }}', '{{ job_id }}')">Join Game</button>
+            {% else %}
+                <p>{{ search_result }}</p>
+            {% endif %}
         </div>
     {% endif %}
+    
+    <script>
+        function joinGame(placeId, jobId) {
+            Roblox.GameLauncher.joinGameInstance(placeId, jobId);
+        }
+    </script>
 </body>
 </html>
 """
@@ -237,7 +249,7 @@ async def search_player(username, place_id):
 
             for thumb in thumbnails.get("data", []):
                 if thumb["imageUrl"] == target_thumbnail_url:
-                    return f"Player found! You have joined server ID: {server.get('id')}."
+                    return (f"Player found!", server.get('id'), server.get('jobId'))  # Return jobId
 
         if cursor is None:
             break
@@ -248,6 +260,9 @@ async def search_player(username, place_id):
 @app.route('/', methods=['GET', 'POST'])
 def home():
     search_result = None
+    join_button = False
+    job_id = None
+    place_id = None
     if request.method == 'POST':
         username = request.form.get('username')
         place_id = request.form.get('placeid')
@@ -259,9 +274,10 @@ def home():
             result = await search_player(username, place_id)
             return result
 
-        search_result = asyncio.run(run_search())  # Use asyncio.run for the async function
+        search_result, server_id, job_id = asyncio.run(run_search())  # Use asyncio.run for the async function
+        join_button = True if search_result == "Player found!" else False
 
-    return render_template_string(HTML_TEMPLATE, search_result=search_result)
+    return render_template_string(HTML_TEMPLATE, search_result=search_result, join_button=join_button, place_id=place_id, job_id=job_id)
 
-if __name__ == '__main__':
-    keep_alive()  # Start the keep-alive function
+if __name__ == "__main__":
+    keep_alive()  # Start the Flask app in a separate thread
