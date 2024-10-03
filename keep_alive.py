@@ -1,13 +1,90 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template_string, request
 from threading import Thread
 import requests
 import asyncio
 
 app = Flask(__name__)
 
+# HTML Template as a multi-line string
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Player Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Search for a Roblox Player</h1>
+    <form method="POST">
+        <label for="username">UserName:</label>
+        <input type="text" id="username" name="username" required>
+        <label for="placeid">PlaceId:</label>
+        <input type="text" id="placeid" name="placeid" required>
+        <button type="submit">Search</button>
+    </form>
+
+    {% if search_result %}
+        <div class="result">
+            <h2>Search Result:</h2>
+            <p>{{ search_result }}</p>
+        </div>
+    {% endif %}
+</body>
+</html>
+"""
+
 @app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template_string(HTML_TEMPLATE)
 
 def run():
     app.run(host='0.0.0.0', port=8080)
@@ -160,7 +237,7 @@ async def search_player(username, place_id):
 
             for thumb in thumbnails.get("data", []):
                 if thumb["imageUrl"] == target_thumbnail_url:
-                    return f"Player found in server ID: {server.get('id')}"
+                    return f"Player found! You have joined server ID: {server.get('id')}."
 
         if cursor is None:
             break
@@ -184,7 +261,7 @@ def home():
 
         search_result = asyncio.run(run_search())  # Use asyncio.run for the async function
 
-    return render_template("index.html", search_result=search_result)
+    return render_template_string(HTML_TEMPLATE, search_result=search_result)
 
 if __name__ == '__main__':
     keep_alive()  # Start the keep-alive function
