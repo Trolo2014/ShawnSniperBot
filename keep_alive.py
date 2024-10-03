@@ -1,8 +1,7 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template_string
 import requests
 import asyncio
 import threading
-from keep_alive import keep_alive  # Import the keep_alive function
 
 app = Flask(__name__)
 
@@ -26,14 +25,13 @@ def get_user_id(username):
 async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25): 
     url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&format=Png&size=150x150"
     delay = initial_delay
-    original_retries = retries  # Store the original retry count
-    while retries > 0:  # Use a while loop to control retries
+    while retries > 0: 
         try:
             response = requests.get(url)
-            if response.status_code == 429:  # Rate limit error
+            if response.status_code == 429:  
                 print(f"Rate limit hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-                retries -= 1  # Decrement retry count
+                retries -= 1  
                 continue
 
             response.raise_for_status()
@@ -44,7 +42,7 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
 
         except requests.RequestException as e:
             print(f"Failed: {e}")
-            retries -= 1  # Decrement retry count
+            retries -= 1  
 
     return None
 
@@ -54,15 +52,14 @@ async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
     if cursor:
         url += f"&cursor={cursor}"
     delay = initial_delay
-    original_retries = retries  # Store the original retry count
 
-    while retries > 0:  # Use a while loop to control retries
+    while retries > 0:  
         try:
             response = requests.get(url)
-            if response.status_code == 429:  # Rate limit error
+            if response.status_code == 429:  
                 print(f"Rate limit Fetching Servers hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-                retries -= 1  # Decrement retry count
+                retries -= 1  
                 continue
 
             response.raise_for_status()
@@ -70,7 +67,7 @@ async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
 
         except requests.RequestException as e:
             print(f"Failed: {e}")
-            retries -= 1  # Decrement retry count
+            retries -= 1  
 
     return None
 
@@ -89,24 +86,23 @@ async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25):
     ]
     url = "https://thumbnails.roblox.com/v1/batch"
     delay = initial_delay
-    original_retries = retries  # Store the original retry count
 
-    while retries > 0:  # Use a while loop to control retries
+    while retries > 0:  
         try:
             response = requests.post(url, json=body)
 
             if response.status_code == 429:
                 print(f"Rate limit Fetching Thumbnails hit. Retrying after {delay} seconds...")
                 await asyncio.sleep(delay)
-                retries -= 1  # Decrement retry count
-                continue  # Retry
+                retries -= 1  
+                continue  
 
-            response.raise_for_status()  # Raise error for other non-200 status codes
+            response.raise_for_status()  
             return response.json()
 
         except requests.RequestException as e:
             print(f"Failed: {e}")
-            retries -= 1  # Decrement retry count
+            retries -= 1  
 
     return None
 
@@ -160,6 +156,35 @@ async def search_player(username, place_id):
 
     return "Player not found"
 
+# HTML template as a string
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Player Search</title>
+</head>
+<body>
+    <h1>Search for a Roblox Player</h1>
+    <form method="POST">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+        <br>
+        <label for="placeid">Place ID:</label>
+        <input type="text" id="placeid" name="placeid" required>
+        <br>
+        <button type="submit">Search</button>
+    </form>
+
+    {% if search_result %}
+        <h2>Search Result:</h2>
+        <p>{{ search_result }}</p>
+    {% endif %}
+</body>
+</html>
+"""
+
 # Route for the homepage
 @app.route('/', methods=['GET', 'POST'])
 def home():
@@ -175,10 +200,15 @@ def home():
             return result
 
         search_result = run_search()
-        return render_template('index.html', search_result=search_result)
+        return render_template_string(HTML_TEMPLATE, search_result=search_result)
 
-    return render_template('index.html', search_result=None)
+    return render_template_string(HTML_TEMPLATE, search_result=None)
+
+# Keep-alive route
+@app.route('/keep_alive')
+def keep_alive():
+    return "I'm alive!"
 
 if __name__ == '__main__':
-    keep_alive()  # Start the keep-alive functionality
-    app.run(debug=True)
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8080)).start()  # Start the Flask app
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8081)).start()  # Start the keep-alive endpoint
