@@ -473,7 +473,7 @@ class SnipeCog(commands.Cog):
                 await interaction.edit_original_response(embed=embed)
                 await asyncio.sleep(1)  # Wait 1 second
                 embed.clear_fields()
-                embed.add_field(name="Fetching Servers Again", value=f"Pain", inline=False)
+                embed.add_field(name="Fetching Servers Again", value="Pain", inline=False)
                 await interaction.edit_original_response(embed=embed)
 
 
