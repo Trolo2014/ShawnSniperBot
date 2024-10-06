@@ -321,12 +321,12 @@ class CheckTshirtCog(commands.Cog):
 
         user_id = get_user_id(username)
         if not user_id:
-            embed = discord.Embed(color=0xFFD700)  # Gold color
+            embed = discord.Embed(color=0x780606)  # Gold color
             embed.add_field(name="Error", value="User not found", inline=False)
             await interaction.edit_original_response(embed=embed)
             return
 
-        embed = discord.Embed(color=0xFFD700)  # Gold color
+        embed = discord.Embed(color=0x780606)  # Gold color
         embed.add_field(name="Checking Purchase Of T-Shirt", value="Starting check...", inline=False)
         message = await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -375,7 +375,7 @@ class SnipeCog(commands.Cog):
                 if user_id != interaction.user.id:
                     user = self.bot.get_user(user_id)
                     if user:
-                        embed = discord.Embed(color=0xFFD700)  # Gold color
+                        embed = discord.Embed(color=0x780606)  # Gold color
                         embed.add_field(name="Sniper", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
                         await interaction.response.send_message(embed=embed, ephemeral=True)
                         return
@@ -384,7 +384,7 @@ class SnipeCog(commands.Cog):
         await interaction.response.defer()  # Defer the response to avoid timeout
 
         # Initial embed with progress information
-        embed = discord.Embed(color=0xFFD700)  # Gold color
+        embed = discord.Embed(color=0x780606)  # Gold color
         embed.add_field(name="Fetching Servers", value="Total Servers Checked: 0", inline=False)
         embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
@@ -433,7 +433,7 @@ class SnipeCog(commands.Cog):
                 if user_id != interaction.user.id:
                     user = self.bot.get_user(user_id)
                     if user:
-                        embed = discord.Embed(color=0xFFD700)  # Gold color
+                        embed = discord.Embed(color=0x780606)  # Gold color
                         embed.add_field(name="Active Job", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
                         await interaction.response.send_message(embed=embed, ephemeral=True)
                         return
@@ -442,7 +442,7 @@ class SnipeCog(commands.Cog):
         await interaction.response.defer()  # Defer the response to avoid timeout
 
         # Initial embed with progress information
-        embed = discord.Embed(color=0xFFD700)  # Gold color
+        embed = discord.Embed(color=0x780606)  # Gold color
         embed.add_field(name="Status", value="Starting to search...", inline=False)
         embed.add_field(name="Total Servers Checked", value="0", inline=False)
         embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
