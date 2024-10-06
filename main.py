@@ -467,7 +467,7 @@ class SnipeCog(commands.Cog):
                 break  # Exit loop if player is found
 
             # Dynamic cooldown
-            for remaining in range(60, 0, -1):  # Countdown from 20 to 1
+            for remaining in range(30, 0, -1):  # Countdown from 20 to 1
                 embed.clear_fields()
                 embed.add_field(name="Rate Limit Cooldown", value=f"Waiting {remaining} seconds before retrying...", inline=False)
                 await interaction.edit_original_response(embed=embed)
