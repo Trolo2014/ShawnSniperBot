@@ -472,6 +472,10 @@ class SnipeCog(commands.Cog):
                 embed.add_field(name="Rate Limit Cooldown", value=f"Waiting {remaining} seconds before retrying...", inline=False)
                 await interaction.edit_original_response(embed=embed)
                 await asyncio.sleep(1)  # Wait 1 second
+                embed.clear_fields()
+                embed.add_field(name="Fetching Servers Again", value=f"Pain", inline=False)
+                await interaction.edit_original_response(embed=embed)
+
 
         if not found:
             # Player not found after 15 minutes
