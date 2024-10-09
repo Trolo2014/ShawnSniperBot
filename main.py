@@ -361,40 +361,34 @@ class SnipeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-  @discord.app_commands.command(name="snipe", description="Search for a player in a specific game")
-@discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID", method="Search method: RealTime or LoadServersScan")
-@discord.app_commands.choices(method=[
-    discord.app_commands.Choice(name="RealTime", value="realtime"),
-    discord.app_commands.Choice(name="LoadServersScan", value="loadserversscan"),
-])
-@commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: int, method: str):
-    # Check if there is an active job
-    if any(active_jobs.values()):
-        for user_id in active_jobs:
-            if user_id != interaction.user.id:
-                user = self.bot.get_user(user_id)
-                if user:
-                    embed = discord.Embed(color=0x780606)  # Gold color
-                    embed.add_field(name="Sniper", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
-                    await interaction.response.send_message(embed=embed, ephemeral=True)
-                    return
+    @discord.app_commands.command(name="snipe", description="Search for a player in a specific game")
+    @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID", method="Search method: RealTime or LoadServersScan")
+    @discord.app_commands.choices(method=[
+        discord.app_commands.Choice(name="RealTime", value="realtime"),
+        discord.app_commands.Choice(name="LoadServersScan", value="loadserversscan"),
+    ])
+    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
+    async def snipe_command(self, interaction: discord.Interaction, username: str, place_id: int, method: str):
+        # Check if there is an active job
+        if any(active_jobs.values()):
+            for user_id in active_jobs:
+                if user_id != interaction.user.id:
+                    user = self.bot.get_user(user_id)
+                    if user:
+                        embed = discord.Embed(color=0x780606)  # Gold color
+                        embed.add_field(name="Sniper", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
+                        await interaction.response.send_message(embed=embed, ephemeral=True)
+                        return
 
-    active_jobs[interaction.user.id] = True
-    await interaction.response.defer()  # Defer the response to avoid timeout
+        active_jobs[interaction.user.id] = True
+        await interaction.response.defer()  # Defer the response to avoid timeout
 
-    # Initial embed with progress information
-    embed = discord.Embed(color=0x780606)  # Gold color
-    embed.add_field(name="Fetching Servers", value="Total Servers Checked: 0", inline=False)
-    embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
-    await interaction.followup.send(embed=embed, ephemeral=True)
+        # Initial embed with progress information
+        embed = discord.Embed(color=0x780606)  # Gold color
+        embed.add_field(name="Fetching Servers", value="Total Servers Checked: 0", inline=False)
+        embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
-    total_checked = 0
-    found = False
-    start_time = datetime.now()
-
-    # Single scan loop
-    while not found:
         # Use the selected method
         if method == "realtime":
             job_id = await search_player(interaction, place_id, username, embed)
@@ -407,10 +401,7 @@ async def snipe_command(self, interaction: discord.Interaction, username: str, p
             active_jobs[interaction.user.id] = False
             return
 
-        total_checked += 1
-        embed.set_field_at(0, name="Fetching Servers", value=f"Total Servers Checked: {total_checked}")  # Update total servers checked
-        
-        # Check if a job was found
+        # Process the result
         if job_id:
             # Player found case
             embed.clear_fields()
@@ -420,100 +411,75 @@ async def snipe_command(self, interaction: discord.Interaction, username: str, p
             embed.add_field(name="DeepLink Roblox Console", value=f'Roblox.GameLauncher.joinGameInstance({place_id},"{job_id}")', inline=False)
             embed.add_field(name="Instructions For DeepLink Roblox Console", value="Copy DeepLink, Enter https://www.roblox.com/home Turn Inspect Element then Select Console And Paste It In Then Enter", inline=False)
             embed.add_field(name="Job ID", value=f"{job_id}", inline=False)
-            found = True  # Mark as found
         else:
             # Player not found case
-            embed.set_field_at(1, name="Matching Players ID With Target", value=f"0")  # Update matching count
-            await interaction.edit_original_response(embed=embed)
-
-        # Check elapsed time every 15 minutes to update the embed
-        if (datetime.now() - start_time).seconds >= 900:  # 15 minutes
-            embed.set_field_at(0, name="Fetching Servers", value=f"Total Servers Checked: {total_checked} (Updated after 15 mins)")  # Update message
-            await interaction.edit_original_response(embed=embed)
-            start_time = datetime.now()  # Reset start time for the next update
-
-    active_jobs[interaction.user.id] = False  # Mark job as finished
-
-
-
-
-
-@discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 30 minutes")
-@discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
-@commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
-async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
-    # Check if there is an active job
-    if any(active_jobs.values()):
-        for user_id in active_jobs:
-            if user_id != interaction.user.id:
-                user = self.bot.get_user(user_id)
-                if user:
-                    embed = discord.Embed(color=0x780606)  # Gold color
-                    embed.add_field(name="Active Job", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
-                    await interaction.response.send_message(embed=embed, ephemeral=True)
-                    return
-
-    active_jobs[interaction.user.id] = True
-    await interaction.response.defer()  # Defer the response to avoid timeout
-
-    # Initial embed with progress information
-    embed = discord.Embed(color=0x780606)  # Gold color
-    embed.add_field(name="Status", value="Starting to search...", inline=False)
-    embed.add_field(name="Total Servers Checked", value="0", inline=False)
-    embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
-    await interaction.followup.send(embed=embed, ephemeral=True)
-
-    end_time = datetime.now() + timedelta(minutes=30)  # Set end time to 30 minutes from now
-    total_checked = 0
-    found = False
-    last_update_time = datetime.now()  # Track when the last update occurred
-
-    # While loop to continuously search until the player is found or all servers are scanned
-    while True:
-        job_id = await search_player(interaction, place_id, username, embed)
-
-        # Update total checked servers count
-        total_checked += 1
-        embed.set_field_at(1, name="Total Servers Checked", value=str(total_checked))  # Update total servers checked
-        await interaction.edit_original_response(embed=embed)
-
-        if job_id:
-            # Player found case
             embed.clear_fields()
-            embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
-            embed.add_field(name="DeepLink BloxStrap", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
-            embed.add_field(name="Instructions For DeepLink BloxStrap", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL Then Enter", inline=False)
-            embed.add_field(name="DeepLink Roblox Console", value=f'Roblox.GameLauncher.joinGameInstance({place_id},"{job_id}")', inline=False)
-            embed.add_field(name="Instructions For DeepLink Roblox Console", value="Copy DeepLink, Enter https://www.roblox.com/home Turn Inspect Element then Select Console And Paste It In Then Enter", inline=False)
-            embed.add_field(name="Job ID", value=f"{job_id}", inline=False)
-            found = True
-            break  # Exit loop if player is found
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id}", value="", inline=False)
 
-        # If time limit reached, but still scanning
-        if datetime.now() >= end_time:
-            embed.set_field_at(0, name="Searching for 30 minutes...", value="Continuing to scan servers...", inline=False)
-
-        # Check if 15 minutes have passed since the last update
-        if (datetime.now() - last_update_time).seconds >= 900:  # 15 minutes
-            embed.set_field_at(0, name="Status", value="Continuing search...")  # Update status
-            embed.set_field_at(1, name="Total Servers Checked", value=str(total_checked))  # Reconfirm total checked
-            await interaction.edit_original_response(embed=embed)
-            last_update_time = datetime.now()  # Reset last update time
-
-        # Dynamic cooldown
-        for remaining in range(30, 0, -1):  # Countdown from 30 to 1
-            embed.set_field_at(0, name="Rate Limit Cooldown", value=f"Waiting {remaining} seconds before retrying...")  # Update rate limit info
-            await interaction.edit_original_response(embed=embed)
-            await asyncio.sleep(1)  # Wait 1 second
-
-    # After the searching is done, update the embed if the player was not found
-    if not found:
-        embed.set_field_at(0, name="Search Complete", value="No matches found after 30 minutes.", inline=False)
-
-    await interaction.edit_original_response(embed=embed)
-    active_jobs[interaction.user.id] = False
+        await interaction.edit_original_response(embed=embed)
+        active_jobs[interaction.user.id] = False
 
 
+
+
+
+    @discord.app_commands.command(name="snipet", description="Continuously search for a player in a specific game for 15 minutes")
+    @discord.app_commands.describe(username="The Roblox username (LETTER CASE MATTER!)", place_id="The game place ID")
+    @commands.has_permissions(administrator=True)  # Restricting command to users with admin permissions
+    async def snipet_command(self, interaction: discord.Interaction, username: str, place_id: str):
+        # Check if there is an active job
+        if any(active_jobs.values()):
+            for user_id in active_jobs:
+                if user_id != interaction.user.id:
+                    user = self.bot.get_user(user_id)
+                    if user:
+                        embed = discord.Embed(color=0x780606)  # Gold color
+                        embed.add_field(name="Active Job", value=f"{user.name} is currently running a search. Please wait until their search is finished before starting a new one.", inline=False)
+                        await interaction.response.send_message(embed=embed, ephemeral=True)
+                        return
+
+        active_jobs[interaction.user.id] = True
+        await interaction.response.defer()  # Defer the response to avoid timeout
+
+        # Initial embed with progress information
+        embed = discord.Embed(color=0x780606)  # Gold color
+        embed.add_field(name="Status", value="Starting to search...", inline=False)
+        embed.add_field(name="Total Servers Checked", value="0", inline=False)
+        embed.add_field(name="Matching Players ID With Target", value="0", inline=False)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+        end_time = datetime.now() + timedelta(minutes=10)
+        found = False
+
+        while datetime.now() < end_time:
+            job_id = await search_player(interaction, place_id, username, embed)
+
+            if job_id:
+                # Player found case
+                embed.clear_fields()
+                embed.add_field(name=f"Player: {username} Found!", value="", inline=False)
+                embed.add_field(name="DeepLink BloxStrap", value=f"roblox://experiences/start?placeId={place_id}&gameInstanceId={job_id}", inline=False)
+                embed.add_field(name="Instructions For DeepLink BloxStrap", value="Copy DeepLink, Enter https://www.roblox.com/home and Paste It Into URL Then Enter", inline=False)
+                embed.add_field(name="DeepLink Roblox Console", value=f'Roblox.GameLauncher.joinGameInstance({place_id},"{job_id}")', inline=False)
+                embed.add_field(name="Instructions For DeepLink Roblox Console", value="Copy DeepLink, Enter https://www.roblox.com/home Turn Inspect Element then Select Console And Paste It In Then Enter", inline=False)
+                embed.add_field(name="Job ID", value=f"{job_id}", inline=False)
+                found = True
+                break  # Exit loop if player is found
+
+            # Dynamic cooldown
+            for remaining in range(30, 0, -1):  # Countdown from 20 to 1
+                embed.clear_fields()
+                embed.add_field(name="Rate Limit Cooldown", value=f"Waiting {remaining} seconds before retrying...", inline=False)
+                await interaction.edit_original_response(embed=embed)
+                await asyncio.sleep(1)  # Wait 1 second
+
+        if not found:
+            # Player not found after 10 minutes
+            embed.clear_fields()
+            embed.add_field(name=f"Player: {username} was not found in PlaceID: {place_id} after 10 minutes", value="", inline=False)
+
+        await interaction.edit_original_response(embed=embed)
+        active_jobs[interaction.user.id] = False
 
 
 # Register the cog and the command tree
