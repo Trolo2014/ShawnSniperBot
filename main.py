@@ -85,24 +85,16 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
     retries = original_retries
     return None
 
+
+
+
 # Updated list of proxies that support HTTPS
 proxies_list = [
-    {"http": "http://72.10.160.94:8355", "https": "http://72.10.160.94:8355"},
-    {"http": "http://67.43.236.20:10145", "https": "http://67.43.236.20:10145"},
     {"http": "http://94.72.97.218:8888", "https": "http://94.72.97.218:8888"},
-    {"http": "http://72.10.160.91:8167", "https": "http://72.10.160.91:8167"},
-    {"http": "http://47.88.31.196:8080", "https": "http://47.88.31.196:8080"},
-    {"http": "http://188.165.49.152:80", "https": "http://188.165.49.152:80"},
-    {"http": "http://72.10.160.93:13931", "https": "http://72.10.160.93:13931"},
-    {"http": "http://67.43.228.252:10579", "https": "http://67.43.228.252:10579"},
-    {"http": "http://148.72.165.7:30127", "https": "http://148.72.165.7:30127"},
-    {"http": "http://67.43.236.22:22079", "https": "http://67.43.236.22:22079"},
+    {"http": "http://45.119.133.218:3128", "https": "http://45.119.133.218:3128"},
+    {"http": "http://15.235.153.57:8089", "https": "http://15.235.153.57:8089"},
+
 ]
-
-
-# Function to get a random proxy from the list
-def get_random_proxy(proxies_list):
-    return random.choice(proxies_list)
 
 # Function to get game servers with proxy rotation
 async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
@@ -111,22 +103,20 @@ async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
         url += f"&cursor={cursor}"
 
     delay = initial_delay
-    original_retries = retries
 
     while retries > 0:
-        try:
-            # Pick a random proxy from the list
-            proxy = get_random_proxy(proxies_list)
-            print(f"Using proxy: {proxy['http']}")
+        # Select a random proxy for each request
+        proxy = random.choice(proxies_list)
+        print(f"Using proxy: {proxy['http']}")
 
+        try:
             # Make the request with the selected proxy
             response = requests.get(url, proxies=proxy, timeout=10)
 
             if response.status_code == 429:  # Rate limit error
-                print(f"Rate limit hit. Retrying after {delay} seconds...")
-                await asyncio.sleep(delay)
-                retries -= 1
-                continue
+                print(f"Rate limit hit with {proxy['http']}. Switching to another proxy...")
+                await asyncio.sleep(delay)  # Wait before trying the next proxy
+                continue  # Go back to the start of the while loop to try another proxy
 
             response.raise_for_status()  # Raise an error for bad responses
             return response.json()  # Return JSON response if successful
@@ -135,9 +125,9 @@ async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
             print(f"Failed with proxy {proxy}: {e}")
             retries -= 1  # Decrement retry count if there's an error
 
-    # If all retries fail, return None
-    retries = original_retries  # Reset retries after success or failure
-    return None
+    print("All retries have failed.")
+    return None  # Return None if all retries fail
+
 
 # Function to batch fetch thumbnails with retry logic
 async def fetch_thumbnails(tokens, retries=480, initial_delay=0.25): 
