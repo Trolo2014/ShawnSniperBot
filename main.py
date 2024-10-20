@@ -88,6 +88,11 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
 
 
 
+
+
+
+
+
 # Updated list of proxies that support HTTPS
 proxies_list = [
     {"http": "http://94.72.97.218:8888", "https": "http://94.72.97.218:8888"},
@@ -95,6 +100,8 @@ proxies_list = [
     {"http": "http://15.235.153.57:8089", "https": "http://15.235.153.57:8089"},
 
 ]
+
+
 
 # Function to get game servers with proxy rotation
 async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
@@ -127,6 +134,13 @@ async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
 
     print("All retries have failed.")
     return None  # Return None if all retries fail
+
+
+
+
+
+
+
 
 
 # Function to batch fetch thumbnails with retry logic
@@ -508,6 +522,7 @@ async def setup(bot):
 async def on_ready():
     await setup(bot)
     print(f'Logged in as {bot.user}')
+
 
 # Run the bot using the token stored in environment variables
 bot.run(os.environ.get('DISCORD_BOT_TOKENO'))
