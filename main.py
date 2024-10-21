@@ -219,7 +219,7 @@ async def search_player(interaction, place_id, username, embed):
             # Update the embed with progress
             embed.clear_fields()
             embed.add_field(name="Fetching Servers", value=f"Total Servers Checked: {total_servers}", inline=False)
-            embed.add_field(name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
+            embed.add_field(name="Matching Players Token With Target Token", value=f"{total_players_not_matched}", inline=False)
             await interaction.edit_original_response(embed=embed)
 
             # Increment fetch count
@@ -244,7 +244,7 @@ async def search_player(interaction, place_id, username, embed):
 
             # Update the total players not matched field
             total_players_not_matched -= len(chunk)
-            embed.set_field_at(1, name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
+            embed.set_field_at(1, name="Matching Players Token With Target Token", value=f"{total_players_not_matched}", inline=False)
             await interaction.edit_original_response(embed=embed)
 
         # If cursor is None, we have exhausted the servers and should exit
@@ -295,7 +295,7 @@ async def load_all_servers_and_search_player(interaction, place_id, username, em
         # Update the embed with progress
         embed.clear_fields()
         embed.add_field(name="Fetching Servers", value=f"Total Servers Loaded: {total_servers}", inline=False)
-        embed.add_field(name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
+        embed.add_field(name="Matching Players Token With Target Token", value=f"{total_players_not_matched}", inline=False)
         await interaction.edit_original_response(embed=embed)
 
         # If cursor is None, break out of the loop
@@ -321,7 +321,7 @@ async def load_all_servers_and_search_player(interaction, place_id, username, em
 
         # Update the total players not matched field
         total_players_not_matched -= len(chunk)
-        embed.set_field_at(1, name="Matching Players ID With Target", value=f"{total_players_not_matched}", inline=False)
+        embed.set_field_at(1, name="Matching Players Token With Target Token", value=f"{total_players_not_matched}", inline=False)
         await interaction.edit_original_response(embed=embed)
 
     return None
