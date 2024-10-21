@@ -98,13 +98,16 @@ proxies_list = [
     {"http": "http://94.72.97.218:8888", "https": "http://94.72.97.218:8888"},
     {"http": "http://45.119.133.218:3128", "https": "http://45.119.133.218:3128"},
     {"http": "http://15.235.153.57:8089", "https": "http://15.235.153.57:8089"},
+    {"http": "http://15.235.153.57:8089", "https": "http://15.235.153.57:8089"},
+    {"http": "http://15.235.153.57:8089", "https": "http://15.235.153.57:8089"},
+    {"http": "http://15.235.153.57:8089", "https": "http://15.235.153.57:8089"},
 
 ]
 
 
 
 # Function to get game servers with proxy rotation
-async def get_servers(place_id, cursor=None, retries=120, initial_delay=1):
+async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25):
     url = f"https://games.roblox.com/v1/games/{place_id}/servers/Public?limit=100"
     if cursor:
         url += f"&cursor={cursor}"
