@@ -88,17 +88,13 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
 
 
 
-
-
-
-
-
 # Updated list of proxies that support HTTPS
 proxies_list = [
     {"http": "http://94.72.97.218:8888", "https": "http://94.72.97.218:8888"},
     {"http": "http://45.119.133.218:3128", "https": "http://45.119.133.218:3128"},
     {"http": "http://15.235.153.57:8089", "https": "http://15.235.153.57:8089"},
-    
+    {"http": "http://148.72.165.7:30118", "https": "http://148.72.165.7:30118"},
+    {"http": "http://8.219.97.248", "https": "http://8.219.97.248"},
 ]
 
 
@@ -134,10 +130,6 @@ async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25):
 
     print("All retries have failed.")
     return None  # Return None if all retries fail
-
-
-
-
 
 
 
