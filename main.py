@@ -85,18 +85,14 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
     retries = original_retries
     return None
 
-
-
-
 # Updated list of proxies that support HTTPS
 proxies_list = [
     {"http": "http://94.72.97.218:8888", "https": "http://94.72.97.218:8888"},
     {"http": "http://45.119.133.218:3128", "https": "http://45.119.133.218:3128"},
     {"http": "http://15.235.153.57:8089", "https": "http://15.235.153.57:8089"},
     {"http": "http://148.72.165.7:30118", "https": "http://148.72.165.7:30118"},
+    {"http": "NoProxy"},  # Option for no proxy
 ]
-
-
 
 # Function to get game servers with proxy rotation
 async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25):
@@ -109,14 +105,19 @@ async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25):
     while retries > 0:
         # Select a random proxy for each request
         proxy = random.choice(proxies_list)
-        print(f"Using proxy: {proxy['http']}")
+
+        if proxy == {"http": "NoProxy"}:
+            print("Using no proxy for this request.")
+            proxy = None  # Set proxy to None to make a request without proxy
+        else:
+            print(f"Using proxy: {proxy['http']}")
 
         try:
-            # Make the request with the selected proxy
-            response = requests.get(url, proxies=proxy, timeout=10)
+            # Make the request with or without a proxy based on the selection
+            response = requests.get(url, proxies=proxy, timeout=10) if proxy else requests.get(url, timeout=10)
 
             if response.status_code == 429:  # Rate limit error
-                print(f"Rate limit hit with {proxy['http']}. Switching to another proxy...")
+                print(f"Rate limit hit with {proxy['http'] if proxy else 'NoProxy'}. Switching to another proxy...")
                 await asyncio.sleep(delay)  # Wait before trying the next proxy
                 continue  # Go back to the start of the while loop to try another proxy
 
@@ -124,7 +125,7 @@ async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25):
             return response.json()  # Return JSON response if successful
 
         except requests.RequestException as e:
-            print(f"Failed with proxy {proxy}: {e}")
+            print(f"Failed with proxy {proxy['http'] if proxy else 'NoProxy'}: {e}")
             retries -= 1  # Decrement retry count if there's an error
 
     print("All retries have failed.")
