@@ -95,6 +95,10 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
 
 # Updated list of proxies that support HTTPS
 proxies_list = [
+    {"http": "http://94.72.97.218:8888", "https": "http://94.72.97.218:8888"},
+    {"http": "http://45.119.133.218:3128", "https": "http://45.119.133.218:3128"},
+    {"http": "http://15.235.153.57:8089", "https": "http://15.235.153.57:8089"},
+    #
     {"http": "http://64.38.135.183:80", "https": "http://64.38.135.183:80"},
     {"http": "http://159.65.244.233:80", "https": "http://159.65.244.233:80"},
     {"http": "http://129.213.89.36:80", "https": "http://129.213.89.36:80"},
