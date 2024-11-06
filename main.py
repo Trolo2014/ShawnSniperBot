@@ -116,7 +116,7 @@ async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25):
 
         try:
             # Make the request with or without a proxy based on the selection
-            response = requests.get(url, proxies=proxy, timeout=2.5) if proxy else requests.get(url, timeout=2.5)
+            response = requests.get(url, proxies=proxy, timeout=2.5) if proxy else requests.get(url, timeout=1)
 
             if response.status_code == 429:  # Rate limit error
                 print(f"Rate limit hit with {proxy['http'] if proxy else 'NoProxy'}. Switching to another proxy...")
