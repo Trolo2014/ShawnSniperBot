@@ -87,14 +87,30 @@ async def get_avatar_thumbnail(user_id, retries=480, initial_delay=0.25):
 
 
 
-# Updated list of proxies that support HTTPS
-proxies_list = [
-    {"http": "http://148.72.165.7:30127", "https": "http://148.72.165.7:30127"},
-    {"http": "http://63.35.64.177:3128", "https": "http://63.35.64.177:3128"},
-    {"http": "http://143.110.226.180:8888", "https": "http://143.110.226.180:8888"},
-    {"http": "http://148.72.168.81:30127", "https": "http://148.72.168.81:30127"},
-    {"http": "NoProxy"},  # Option for no proxy
-]
+GUILD_ID = 1056201508158443550
+MESSAGE_ID = 1305537153886982214  # The ID of the message containing proxies
+proxies_list = []  # This will be populated with the proxies from the message
+
+# Function to fetch proxies from a specific message
+async def fetch_proxies_from_message(client):
+    global proxies_list
+    try:
+        guild = discord.utils.get(client.guilds, id=GUILD_ID)
+        channel = discord.utils.get(guild.text_channels, name="proxy")
+        message = await channel.fetch_message(MESSAGE_ID)
+        
+        # Parse message content into proxy format
+        proxies_list = [
+            {"http": f"http://{proxy}", "https": f"http://{proxy}"}
+            for proxy in message.content.splitlines() if proxy.lower() != "noproxy"
+        ]
+        # Add the "NoProxy" option
+        proxies_list.append({"http": "NoProxy"})
+        print("Proxies loaded from message:", proxies_list)
+
+    except Exception as e:
+        print(f"Error fetching proxies from message: {e}")
+        
 
 # Function to get game servers with proxy rotation
 async def get_servers(place_id, cursor=None, retries=480, initial_delay=0.25):
