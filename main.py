@@ -356,7 +356,7 @@ class CheckTshirtCog(commands.Cog):
             ownership_status = check_ownership(user_id, tshirt_id)
             if ownership_status:
                 embed.clear_fields()
-                embed.add_field(name="Purchase Detected", value=f"{username} has bought T-shirt ID {tshirt_id}!", inline=False)
+                embed.add_field(name="Purchase Detected", value=f"{username} has bought T-shirt {tshirt_id}!", inline=False)
                 await message.edit(embed=embed)
                 return
 
